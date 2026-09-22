@@ -44,11 +44,6 @@ public final class M3UParser {
                 continue;
             }
 
-            if (line.regionMatches(true, 0, "#EXTVLCOPT:http-origin=", 0, 23)) {
-                pendingHeaders.put("Origin", line.substring(line.indexOf('=') + 1).trim());
-                continue;
-            }
-
             if (line.startsWith("#EXTHTTP:")) {
                 Matcher hm = JSON_HEADER.matcher(line.substring(9));
                 while (hm.find()) pendingHeaders.put(hm.group(1), hm.group(2));

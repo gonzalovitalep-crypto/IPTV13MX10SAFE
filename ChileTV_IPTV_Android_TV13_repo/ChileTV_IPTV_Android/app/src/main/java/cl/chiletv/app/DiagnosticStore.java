@@ -46,13 +46,10 @@ public final class DiagnosticStore {
 
     public static String buildReport(Context context) {
         StringBuilder out = new StringBuilder();
-        out.append("=== CHILE TV IPTV DEBUG MX10 LEGACY ===\n");
+        out.append("=== CHILE TV IPTV DEBUG MX10 ULTRA SAFE ===\n");
         out.append("Fecha: ").append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss Z", Locale.US).format(new Date())).append('\n');
         out.append("App: ").append(appVersion(context)).append('\n');
         out.append("Android reportado: ").append(safe(Build.VERSION.RELEASE)).append(" / API ").append(Build.VERSION.SDK_INT).append('\n');
-        if ("13".equals(safe(Build.VERSION.RELEASE)) && Build.VERSION.SDK_INT == 25) {
-            out.append("ADVERTENCIA: el firmware dice Android 13, pero SDK_INT=25 (Android 7.1 para las apps).\n");
-        }
         out.append("Security patch: ").append(readSecurityPatch()).append('\n');
         out.append("Fabricante: ").append(safe(Build.MANUFACTURER)).append('\n');
         out.append("Marca: ").append(safe(Build.BRAND)).append('\n');

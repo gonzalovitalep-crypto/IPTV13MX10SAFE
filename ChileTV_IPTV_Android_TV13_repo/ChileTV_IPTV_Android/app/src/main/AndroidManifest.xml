@@ -12,7 +12,7 @@
         android:allowBackup="true"
         android:hardwareAccelerated="true"
         android:icon="@drawable/ic_tv"
-        android:label="Chile TV IPTV MX10"
+        android:label="Chile TV IPTV MX10 ULTRA SAFE"
         android:roundIcon="@drawable/ic_tv"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"

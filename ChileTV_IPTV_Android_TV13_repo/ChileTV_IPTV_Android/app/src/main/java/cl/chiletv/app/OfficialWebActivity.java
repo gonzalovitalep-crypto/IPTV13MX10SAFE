@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -15,16 +16,16 @@ import android.widget.Toast;
 public class OfficialWebActivity extends Activity {
     private static final String[][] SITES = new String[][]{
             {"Chilevisión", "Señal online oficial", "https://www.chilevision.cl/senal-online"},
-            {"TVN", "TVN en vivo", "https://ww2.tvn.cl/en-vivo"},
-            {"24 Horas", "24 Horas, TVN, NTV y TV Chile", "https://www.24horas.cl/envivo"},
-            {"Mega", "Señal principal oficial", "https://www.mega.cl/senal-en-vivo/"},
-            {"Mega 2", "Segunda señal oficial", "https://www.mega.cl/senal-en-vivo/senal-mega-2"},
+            {"TVN", "TVN en vivo", "https://www.tvn.cl/en-vivo"},
+            {"Mega", "Señal en vivo oficial", "https://www.mega.cl/senal-en-vivo/"},
             {"Canal 13", "Señal principal en 13Go", "https://www.13.cl/13go-live-c13"},
-            {"T13 En Vivo", "Noticias 24/7", "https://www.t13.cl/en-vivo"},
             {"TV+", "Señal online oficial", "https://www.tvmas.tv/page/en-vivo/"},
-            {"La Red", "Sitio oficial", "https://www.lared.cl/"},
-            {"Telecanal", "Sitio oficial", "https://telecanal.cl/"},
-            {"Meganoticias", "Señal informativa", "https://www.meganoticias.cl/senal-en-vivo/meganoticias/"},
+            {"La Red", "Sitio oficial; la señal online puede variar", "https://www.lared.cl/"},
+            {"Telecanal", "Sitio oficial; señal online según disponibilidad", "https://telecanal.cl/"},
+            {"24 Horas", "Señal informativa y señales TVN", "https://www.24horas.cl/envivo"},
+            {"T13", "T13 en vivo", "https://www.t13.cl/en-vivo"},
+            {"Meganoticias Ahora", "Señal informativa de Megamedia", "https://www.meganoticias.cl/senal-en-vivo/meganoticias/"},
+            {"Mega 2", "Segunda señal oficial de Mega", "https://www.mega.cl/senal-en-vivo/senal-mega-2"},
             {"Canal 9 Bío Bío TV", "Señal regional oficial", "https://www.canal9.cl/"},
             {"UCV TV", "TV en directo", "https://ucvtv.cl/"}
     };
@@ -65,7 +66,7 @@ public class OfficialWebActivity extends Activity {
         title.setTypeface(title.getTypeface(), 1);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText(description + " · abre el sitio oficial");
+        subtitle.setText(description + " · abre el sitio del canal");
         subtitle.setTextColor(Color.rgb(160, 170, 180));
         subtitle.setTextSize(13);
         subtitle.setPadding(0, dp(3), dp(12), 0);

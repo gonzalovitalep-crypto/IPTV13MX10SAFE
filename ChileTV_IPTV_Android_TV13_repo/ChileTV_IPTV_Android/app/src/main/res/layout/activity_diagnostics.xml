@@ -18,7 +18,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="Después de un fallo de reproducción vuelve aquí y copia el reporte. En este MX10 el dato importante es API 25, aunque el menú del firmware muestre Android 13."
+        android:text="Después de un cierre inesperado vuelve a abrir la app, entra aquí y copia este reporte. Android 13 también informa si el proceso terminó por crash nativo, ANR o memoria."
         android:textColor="@color/textSecondary"
         android:textSize="13sp" />
 
