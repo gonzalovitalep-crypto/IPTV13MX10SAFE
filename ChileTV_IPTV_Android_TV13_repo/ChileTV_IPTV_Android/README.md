@@ -1,25 +1,34 @@
-# Chile TV IPTV · MX10 SAFE v1.3.0
+# Chile TV IPTV · MX10 Legacy v5
 
-Edición de compatibilidad para TV Stick/box genéricos MX10 con firmware Android modificado.
+Edición específica para TV Box MX10 que reporta Android 13 pero ejecuta API 25 (Android 7.1 a nivel de SDK).
 
-## Diferencias principales
-- Inicio seguro sin AndroidX ni Media3.
-- Interfaz basada solo en APIs nativas de Android.
-- Reproductor `VideoView` / `MediaPlayer` nativo.
-- Sin línea de tiempo en canales live, evitando el efecto de 10-30 segundos que vuelve a cero.
-- Nombre del canal se oculta automáticamente y reaparece con control remoto/mouse/touch.
-- Diagnóstico visible desde la primera pantalla.
-- Botón para abrir un stream en un reproductor externo si el MediaPlayer del firmware falla.
-- Lista Chile de IPTV-org y accesos a webs oficiales.
+## Cambios principales
 
-## Compatibilidad de compilación
-- minSdk 21
-- targetSdk 28 (modo de compatibilidad)
-- compileSdk 35
-- Java source/target 8
-- Sin dependencias AndroidX
+- `targetSdk 25`, `minSdk 21`, `compileSdk 35`.
+- ExoPlayer Legacy 2.18.7 para HLS/DASH, compatible con API 16+.
+- Fallback automático al `VideoView/MediaPlayer` nativo si ExoPlayer no abre una señal.
+- Límite de video a 720p / 4 Mbps para reducir presión sobre Rockchip RK322x y 128 MB de heap.
+- Buffer reducido para equipos con poca memoria.
+- Sin barra de tiempo para señales en vivo.
+- La franja con el nombre del canal se oculta tras unos segundos y vuelve con mouse/control remoto.
+- Botón "Abrir externo" cuando un canal requiere otro reproductor.
+- Varias fuentes chilenas seleccionables desde la app:
+  - Verificados: `https://dearbulut.github.io/iptv/playlists/country/cl.m3u`
+  - IPTV-org: `https://iptv-org.github.io/iptv/countries/cl.m3u`
+  - M3U.CL: `https://m3u.cl/lista/CL.m3u`
+  - Free-TV: `https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8` (filtrada a Chile)
+- Filtro "Nacionales" activado por defecto.
+- Accesos a señales web oficiales de Chilevisión, TVN/24 Horas, Mega, Canal 13/T13, TV+, etc.
 
-La app sigue utilizando la playlist pública de Chile de IPTV-org.
+## Uso con control remoto
 
-## Instalación en paralelo
-Esta edición usa el applicationId `cl.chiletv.app.safe`, por lo que puede instalarse junto a la versión anterior para comparar sin desinstalarla.
+- Flechas: navegar.
+- OK/Enter sobre un canal: reproducir.
+- OK durante reproducción: pausa/reanuda.
+- Atrás: volver.
+- Mantener pulsado sobre un canal: favorito.
+- Botón `Fuente`: cambia entre las cuatro listas.
+
+## Nota
+
+Las listas enlazan señales públicas de terceros. La disponibilidad de cada canal puede cambiar, requerir geolocalización, cabeceras HTTP o un reproductor distinto.

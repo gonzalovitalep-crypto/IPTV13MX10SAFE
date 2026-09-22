@@ -34,7 +34,11 @@ public class CompatMainActivity extends Activity {
     private TextView statusText;
     private ProgressBar loadingBar;
     private Button favoriteFilter;
+    private Button sourceButton;
+    private Button nationalFilter;
     private boolean onlyFavorites = false;
+    private boolean onlyNationals = true;
+    private ChannelRepository.Source currentSource = ChannelRepository.Source.VERIFIED;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +52,8 @@ public class CompatMainActivity extends Activity {
         statusText = findViewById(R.id.compatStatusText);
         loadingBar = findViewById(R.id.compatLoadingBar);
         favoriteFilter = findViewById(R.id.btnCompatFavorites);
+        sourceButton = findViewById(R.id.btnCompatSource);
+        nationalFilter = findViewById(R.id.btnCompatNationals);
         Button refresh = findViewById(R.id.btnCompatRefresh);
         Button diagnostics = findViewById(R.id.btnCompatDiagnostics);
         Button web = findViewById(R.id.btnCompatWeb);
@@ -77,31 +83,46 @@ public class CompatMainActivity extends Activity {
             favoriteFilter.setText(onlyFavorites ? "★ Favoritos" : "☆ Favoritos");
             applyFilter();
         });
+        nationalFilter.setOnClickListener(v -> {
+            onlyNationals = !onlyNationals;
+            nationalFilter.setText(onlyNationals ? "Nacionales: sí" : "Nacionales: no");
+            applyFilter();
+        });
+        sourceButton.setOnClickListener(v -> {
+            currentSource = currentSource.next();
+            sourceButton.setText("Fuente: " + currentSource.label);
+            loadChannels();
+        });
         diagnostics.setOnClickListener(v -> startActivity(new Intent(this, DiagnosticsActivity.class)));
         web.setOnClickListener(v -> startActivity(new Intent(this, OfficialWebActivity.class)));
         home.setOnClickListener(v -> finish());
 
+        sourceButton.setText("Fuente: " + currentSource.label);
+        nationalFilter.setText("Nacionales: sí");
         searchInput.clearFocus();
         loadChannels();
     }
 
     private void loadChannels() {
         loadingBar.setVisibility(View.VISIBLE);
-        statusText.setText("Cargando canales de Chile…");
-        repository.load(new ChannelRepository.Callback() {
+        statusText.setText("Cargando " + currentSource.label + "…");
+        repository.load(currentSource, new ChannelRepository.Callback() {
             @Override
-            public void onLoaded(List<Channel> channels, boolean fromCache) {
+            public void onLoaded(List<Channel> channels, boolean fromCache, ChannelRepository.Source source) {
+                if (source != currentSource) return;
                 allChannels.clear();
                 allChannels.addAll(channels);
                 loadingBar.setVisibility(View.GONE);
                 applyFilter();
-                if (fromCache) Toast.makeText(CompatMainActivity.this, "Usando lista guardada.", Toast.LENGTH_SHORT).show();
+                if (fromCache) Toast.makeText(CompatMainActivity.this,
+                        "Usando caché de " + source.label + ".", Toast.LENGTH_SHORT).show();
             }
 
             @Override
-            public void onError(String message) {
+            public void onError(String message, ChannelRepository.Source source) {
+                if (source != currentSource) return;
                 loadingBar.setVisibility(View.GONE);
-                statusText.setText("No se pudo cargar la lista.");
+                statusText.setText("No se pudo cargar " + source.label + ".");
                 Toast.makeText(CompatMainActivity.this, message, Toast.LENGTH_LONG).show();
             }
         });
@@ -115,10 +136,16 @@ public class CompatMainActivity extends Activity {
                     || c.getName().toLowerCase(Locale.ROOT).contains(q)
                     || c.getGroup().toLowerCase(Locale.ROOT).contains(q);
             boolean favOk = !onlyFavorites || favorites.isFavorite(c);
-            if (textOk && favOk) visibleChannels.add(c);
+            boolean nationalOk = !onlyNationals
+                    || ChannelRepository.isKnownNational(c.getName())
+                    || c.getGroup().toLowerCase(Locale.ROOT).contains("nacional")
+                    || c.getGroup().toLowerCase(Locale.ROOT).contains("noticia");
+            if (textOk && favOk && nationalOk) visibleChannels.add(c);
         }
         adapter.notifyDataSetChanged();
-        statusText.setText(visibleChannels.size() + " canales" + (onlyFavorites ? " favoritos" : ""));
+        statusText.setText(visibleChannels.size() + " canales · " + currentSource.label
+                + (onlyNationals ? " · nacionales" : "")
+                + (onlyFavorites ? " · favoritos" : ""));
         if (!visibleChannels.isEmpty()) {
             listView.postDelayed(() -> {
                 try {
@@ -133,6 +160,7 @@ public class CompatMainActivity extends Activity {
         Intent i = new Intent(this, CompatPlayerActivity.class);
         i.putExtra("name", channel.getName());
         i.putExtra("url", channel.getUrl());
+        i.putExtra("source", currentSource.label);
         Bundle headers = new Bundle();
         for (Map.Entry<String, String> e : channel.getHeaders().entrySet()) headers.putString(e.getKey(), e.getValue());
         i.putExtra("headers", headers);
@@ -195,7 +223,7 @@ public class CompatMainActivity extends Activity {
 
             Channel c = visibleChannels.get(position);
             holder.title.setText(c.getName());
-            holder.subtitle.setText(c.getGroup().isEmpty() ? "Chile" : c.getGroup());
+            holder.subtitle.setText((c.getGroup().isEmpty() ? "Chile" : c.getGroup()) + " · " + currentSource.label);
             holder.star.setText(favorites.isFavorite(c) ? "★" : "☆");
             return convertView;
         }

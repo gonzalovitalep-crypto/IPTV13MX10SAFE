@@ -20,14 +20,14 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Chile TV IPTV · modo MX10"
+                android:text="Chile TV IPTV · MX10 Legacy"
                 android:textColor="@color/textPrimary"
                 android:textSize="25sp"
                 android:textStyle="bold" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Lista chilena IPTV-org · reproductor nativo"
+                android:text="API 25 · múltiples fuentes · ExoPlayer Legacy con fallback nativo"
                 android:textColor="@color/textSecondary"
                 android:textSize="12sp" />
         </LinearLayout>
@@ -66,13 +66,31 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal">
             <Button
-                android:id="@+id/btnCompatRefresh"
+                android:id="@+id/btnCompatSource"
                 android:layout_width="wrap_content"
                 android:layout_height="44dp"
                 android:background="@drawable/bg_button"
-                android:text="Actualizar"
+                android:text="Fuente: Verificados"
                 android:textAllCaps="false"
                 android:textColor="#111111" />
+            <Button
+                android:id="@+id/btnCompatNationals"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginLeft="8dp"
+                android:background="@drawable/bg_button_dark"
+                android:text="Nacionales: sí"
+                android:textAllCaps="false"
+                android:textColor="@color/textPrimary" />
+            <Button
+                android:id="@+id/btnCompatRefresh"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginLeft="8dp"
+                android:background="@drawable/bg_button_dark"
+                android:text="Actualizar"
+                android:textAllCaps="false"
+                android:textColor="@color/textPrimary" />
             <Button
                 android:id="@+id/btnCompatFavorites"
                 android:layout_width="wrap_content"

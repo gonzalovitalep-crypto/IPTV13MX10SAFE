@@ -4,12 +4,19 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
+    <com.google.android.exoplayer2.ui.PlayerView
+        android:id="@+id/compatExoPlayerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000" />
+
     <VideoView
         android:id="@+id/compatVideoView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:focusable="true"
-        android:focusableInTouchMode="true" />
+        android:focusableInTouchMode="true"
+        android:visibility="gone" />
 
     <ProgressBar
         android:id="@+id/compatPlayerLoading"
@@ -44,10 +51,11 @@
                 android:textSize="21sp"
                 android:textStyle="bold" />
             <TextView
+                android:id="@+id/compatEngineText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="EN VIVO · reproductor nativo MX10 · OK: pausa/reanuda"
+                android:text="EN VIVO · ExoPlayer Legacy · máx. 720p"
                 android:textColor="#B9C0C7"
                 android:textSize="12sp" />
         </LinearLayout>
@@ -64,7 +72,7 @@
 
     <LinearLayout
         android:id="@+id/compatErrorPanel"
-        android:layout_width="460dp"
+        android:layout_width="520dp"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:background="@drawable/bg_search"
@@ -88,14 +96,24 @@
                 android:layout_height="46dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_button"
-                android:text="Reintentar"
+                android:text="Reintentar Exo"
                 android:textAllCaps="false"
                 android:textColor="#111111" />
+            <Button
+                android:id="@+id/btnCompatNative"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_marginLeft="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_button_dark"
+                android:text="Motor nativo"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF" />
             <Button
                 android:id="@+id/btnCompatExternal"
                 android:layout_width="0dp"
                 android:layout_height="46dp"
-                android:layout_marginLeft="10dp"
+                android:layout_marginLeft="8dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_button_dark"
                 android:text="Abrir externo"

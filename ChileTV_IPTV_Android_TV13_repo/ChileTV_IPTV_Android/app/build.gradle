@@ -9,9 +9,9 @@ android {
     defaultConfig {
         applicationId 'cl.chiletv.app.safe'
         minSdk 21
-        targetSdk 28
-        versionCode 1
-        versionName '1.3.0-mx10-safe'
+        targetSdk 25
+        versionCode 5
+        versionName '1.4.0-mx10-legacy'
     }
 
     buildTypes {
@@ -28,5 +28,8 @@ android {
 }
 
 dependencies {
-    // Intencionalmente vacío: esta edición SAFE usa solo APIs nativas de Android.
+    implementation 'com.google.android.exoplayer:exoplayer-core:2.18.7'
+    implementation 'com.google.android.exoplayer:exoplayer-hls:2.18.7'
+    implementation 'com.google.android.exoplayer:exoplayer-dash:2.18.7'
+    implementation 'com.google.android.exoplayer:exoplayer-ui:2.18.7'
 }
