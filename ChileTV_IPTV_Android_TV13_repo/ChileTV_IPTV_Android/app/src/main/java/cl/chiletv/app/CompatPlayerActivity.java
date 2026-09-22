@@ -23,18 +23,33 @@ import java.util.Map;
 
 public class CompatPlayerActivity extends Activity {
     private static final long OVERLAY_TIMEOUT = 4500L;
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Runnable hideOverlay = () -> {
-        if (overlay != null && errorPanel != null && errorPanel.getVisibility() != View.VISIBLE) {
-            overlay.animate().alpha(0f).setDuration(180).withEndAction(() -> overlay.setVisibility(View.GONE)).start();
-        }
-    };
 
+    // Declarar primero las vistas usadas por hideOverlay evita "illegal forward reference"
+    // con compiladores Java/Gradle más estrictos.
     private VideoView videoView;
     private View overlay;
     private View errorPanel;
     private TextView errorText;
     private ProgressBar loading;
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable hideOverlay = new Runnable() {
+        @Override
+        public void run() {
+            if (overlay != null && errorPanel != null && errorPanel.getVisibility() != View.VISIBLE) {
+                overlay.animate()
+                        .alpha(0f)
+                        .setDuration(180)
+                        .withEndAction(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (overlay != null) overlay.setVisibility(View.GONE);
+                            }
+                        })
+                        .start();
+            }
+        }
+    };
     private String name;
     private String url;
     private final Map<String, String> headers = new HashMap<>();
@@ -212,7 +227,7 @@ public class CompatPlayerActivity extends Activity {
     }
 
     @Override
-    protected void onWindowFocusChanged(boolean hasFocus) {
+    public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) enterImmersiveLegacy();
     }
