@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -62,7 +63,29 @@ public class CompatMainActivity extends Activity {
         adapter = new CompatAdapter();
         listView.setAdapter(adapter);
         listView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-        listView.setOnItemClickListener((parent, view, position, id) -> openChannel(visibleChannels.get(position)));
+        listView.setItemsCanFocus(true);
+
+        // Algunos firmwares Rockchip/API 25 no disparan OnItemClick cuando la fila
+        // obtiene el foco con el control remoto. Mantenemos el listener del ListView
+        // y añadimos manejo explícito de OK/ENTER como respaldo.
+        listView.setOnItemClickListener((parent, view, position, id) -> {
+            if (position >= 0 && position < visibleChannels.size()) {
+                openChannel(visibleChannels.get(position), "list_onItemClick");
+            }
+        });
+        listView.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() != KeyEvent.ACTION_UP) return false;
+            if (keyCode != KeyEvent.KEYCODE_DPAD_CENTER
+                    && keyCode != KeyEvent.KEYCODE_ENTER
+                    && keyCode != KeyEvent.KEYCODE_NUMPAD_ENTER
+                    && keyCode != KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) return false;
+            int position = listView.getSelectedItemPosition();
+            if (position >= 0 && position < visibleChannels.size()) {
+                openChannel(visibleChannels.get(position), "list_key_" + keyCode);
+                return true;
+            }
+            return false;
+        });
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             Channel c = visibleChannels.get(position);
             boolean nowFavorite = favorites.toggle(c);
@@ -157,14 +180,42 @@ public class CompatMainActivity extends Activity {
     }
 
     private void openChannel(Channel channel) {
-        Intent i = new Intent(this, CompatPlayerActivity.class);
-        i.putExtra("name", channel.getName());
-        i.putExtra("url", channel.getUrl());
-        i.putExtra("source", currentSource.label);
-        Bundle headers = new Bundle();
-        for (Map.Entry<String, String> e : channel.getHeaders().entrySet()) headers.putString(e.getKey(), e.getValue());
-        i.putExtra("headers", headers);
-        startActivity(i);
+        openChannel(channel, "direct");
+    }
+
+    private void openChannel(Channel channel, String trigger) {
+        if (channel == null) {
+            Toast.makeText(this, "Canal no disponible.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String channelUrl = channel.getUrl();
+        if (channelUrl == null || channelUrl.trim().isEmpty()) {
+            DiagnosticStore.savePlayerLog(this, channel.getName(), channelUrl,
+                    "SELECCION sin URL | trigger=" + trigger);
+            Toast.makeText(this, "Este canal no tiene una URL reproducible.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        DiagnosticStore.savePlayerLog(this, channel.getName(), channelUrl,
+                "SELECCION canal | trigger=" + trigger + " | fuente=" + currentSource.label);
+        Toast.makeText(this, "Abriendo " + channel.getName() + "…", Toast.LENGTH_SHORT).show();
+
+        try {
+            Intent i = new Intent(this, CompatPlayerActivity.class);
+            i.putExtra("name", channel.getName());
+            i.putExtra("url", channelUrl);
+            i.putExtra("source", currentSource.label);
+            Bundle headers = new Bundle();
+            for (Map.Entry<String, String> e : channel.getHeaders().entrySet()) {
+                headers.putString(e.getKey(), e.getValue());
+            }
+            i.putExtra("headers", headers);
+            startActivity(i);
+        } catch (Throwable t) {
+            DiagnosticStore.savePlayerLog(this, channel.getName(), channelUrl,
+                    "ERROR abriendo player | " + t.getClass().getName() + ": " + String.valueOf(t.getMessage()));
+            Toast.makeText(this, "No se pudo abrir el canal: " + t.getClass().getSimpleName(), Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override
@@ -189,6 +240,9 @@ public class CompatMainActivity extends Activity {
                 row.setMinimumHeight(dp(66));
                 row.setBackgroundResource(R.drawable.bg_channel);
                 row.setFocusable(true);
+                row.setFocusableInTouchMode(true);
+                row.setClickable(true);
+                row.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
 
                 LinearLayout textBox = new LinearLayout(CompatMainActivity.this);
                 textBox.setOrientation(LinearLayout.VERTICAL);
@@ -225,6 +279,30 @@ public class CompatMainActivity extends Activity {
             holder.title.setText(c.getName());
             holder.subtitle.setText((c.getGroup().isEmpty() ? "Chile" : c.getGroup()) + " · " + currentSource.label);
             holder.star.setText(favorites.isFavorite(c) ? "★" : "☆");
+
+            // Listener directo sobre la fila: corrige boxes Rockchip donde el foco
+            // del elemento consume el OK y el ListView nunca recibe OnItemClick.
+            final Channel boundChannel = c;
+            convertView.setOnClickListener(v -> openChannel(boundChannel, "row_click"));
+            convertView.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() != KeyEvent.ACTION_UP) return false;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER
+                        || keyCode == KeyEvent.KEYCODE_ENTER
+                        || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER
+                        || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) {
+                    openChannel(boundChannel, "row_key_" + keyCode);
+                    return true;
+                }
+                return false;
+            });
+            convertView.setOnLongClickListener(v -> {
+                boolean nowFavorite = favorites.toggle(boundChannel);
+                Toast.makeText(CompatMainActivity.this,
+                        nowFavorite ? "Agregado a favoritos" : "Quitado de favoritos",
+                        Toast.LENGTH_SHORT).show();
+                applyFilter();
+                return true;
+            });
             return convertView;
         }
     }

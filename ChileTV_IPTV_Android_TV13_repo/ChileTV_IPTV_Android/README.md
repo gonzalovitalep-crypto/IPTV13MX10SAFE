@@ -1,4 +1,14 @@
-# Chile TV IPTV · MX10 ULTRA SAFE v5.1
+# Chile TV IPTV · MX10 Ultra Safe v5.2
+
+Versión específica para MX10/RK322x con firmware que reporta Android 13 pero expone API 25.
+
+## Cambio v5.2
+- Corrige selección de canales con controles remotos Rockchip: la fila ahora maneja directamente clic, DPAD_CENTER, ENTER, NUMPAD_ENTER y MEDIA_PLAY_PAUSE.
+- Conserva un segundo respaldo en el ListView.
+- Guarda en Diagnóstico el evento exacto que abrió el canal.
+- Muestra un aviso «Abriendo…» para confirmar que el OK fue recibido.
+- Sin ExoPlayer, Media3 ni AndroidX.
+
 
 Edición para MX10/RK322x que muestra "Android 13" pero ejecuta apps como API 25.
 

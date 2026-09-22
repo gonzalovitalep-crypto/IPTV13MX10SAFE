@@ -20,14 +20,14 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Chile TV IPTV · MX10 Legacy"
+                android:text="Chile TV IPTV · MX10 Ultra Safe"
                 android:textColor="@color/textPrimary"
                 android:textSize="25sp"
                 android:textStyle="bold" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="API 25 · múltiples fuentes · ExoPlayer Legacy con fallback nativo"
+                android:text="API 25 · múltiples fuentes · reproductor nativo/externo · control remoto reforzado"
                 android:textColor="@color/textSecondary"
                 android:textSize="12sp" />
         </LinearLayout>

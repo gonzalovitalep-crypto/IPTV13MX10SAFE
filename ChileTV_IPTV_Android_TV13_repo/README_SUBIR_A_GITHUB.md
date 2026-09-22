@@ -1,12 +1,12 @@
-# Subir a GitHub
+# Chile TV IPTV MX10 Ultra Safe v5.2
 
-Copia el contenido de este ZIP a la raíz de tu repositorio manteniendo:
+Sube el contenido de este ZIP a la raiz de tu repositorio GitHub.
 
-- `.github/workflows/build-apk.yml`
-- `ChileTV_IPTV_Android_TV13_repo/ChileTV_IPTV_Android/`
+La correccion principal de v5.2 refuerza la seleccion con control remoto en firmware Rockchip/API 25:
+- clic directo sobre cada fila;
+- DPAD_CENTER / ENTER / NUMPAD_ENTER / MEDIA_PLAY_PAUSE;
+- respaldo adicional en el ListView;
+- registro en Diagnostico del evento que intento abrir el canal;
+- mensaje visual "Abriendo..." al recibir correctamente el OK.
 
-Después haz **Commit changes**. GitHub Actions generará el artefacto:
-
-`ChileTV-IPTV-MX10-ULTRA-SAFE-v5-1`
-
-La edición v5.1 vuelve a la base SAFE que sí abrió en el MX10 y elimina por completo ExoPlayer del APK.
+GitHub Actions genera el artefacto `ChileTV-IPTV-MX10-ULTRA-SAFE-v5-2`.

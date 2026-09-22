@@ -10,8 +10,8 @@ android {
         applicationId 'cl.chiletv.app.safe'
         minSdk 21
         targetSdk 25
-        versionCode 6
-        versionName '1.4.1-mx10-ultrasafe'
+        versionCode 7
+        versionName '1.4.2-mx10-ultrasafe'
     }
 
     buildTypes {
