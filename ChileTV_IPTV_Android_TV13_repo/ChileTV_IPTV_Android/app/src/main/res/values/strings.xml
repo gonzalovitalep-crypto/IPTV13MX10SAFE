@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Chile TV IPTV</string>
+    <string name="title_chile_tv">Chile TV</string>
+    <string name="subtitle_source">Canales públicos indexados por IPTV-org</string>
+    <string name="search_hint">Buscar canal o categoría…</string>
+    <string name="refresh">Actualizar</string>
+    <string name="favorites">Favoritos</string>
+    <string name="all">Todos</string>
+    <string name="loading">Cargando canales de Chile…</string>
+    <string name="retry">Reintentar</string>
+    <string name="close">Cerrar</string>
+</resources>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <application
+        android:name="cl.chiletv.app.ChileTvApplication"
+        android:allowBackup="true"
+        android:hardwareAccelerated="true"
+        android:icon="@drawable/ic_tv"
+        android:label="Chile TV IPTV SAFE"
+        android:roundIcon="@drawable/ic_tv"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="true">
+
+        <activity android:name="cl.chiletv.app.CompatPlayerActivity" android:exported="false" android:screenOrientation="landscape" />
+        <activity android:name="cl.chiletv.app.CompatMainActivity" android:exported="false" android:screenOrientation="landscape" />
+        <activity android:name="cl.chiletv.app.DiagnosticsActivity" android:exported="false" android:screenOrientation="landscape" />
+        <activity android:name="cl.chiletv.app.OfficialWebActivity" android:exported="false" android:screenOrientation="landscape" />
+
+        <activity
+            android:name="cl.chiletv.app.SafeLauncherActivity"
+            android:exported="true"
+            android:screenOrientation="landscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

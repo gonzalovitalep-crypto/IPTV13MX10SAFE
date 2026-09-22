@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:orientation="vertical"
+    android:padding="18dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Chile TV IPTV · modo MX10"
+                android:textColor="@color/textPrimary"
+                android:textSize="25sp"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Lista chilena IPTV-org · reproductor nativo"
+                android:textColor="@color/textSecondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnCompatHome"
+            android:layout_width="wrap_content"
+            android:layout_height="46dp"
+            android:background="@drawable/bg_button_dark"
+            android:focusable="true"
+            android:text="Inicio"
+            android:textAllCaps="false"
+            android:textColor="@color/textPrimary" />
+    </LinearLayout>
+
+    <EditText
+        android:id="@+id/compatSearchInput"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_search"
+        android:hint="Buscar canal…"
+        android:paddingLeft="15dp"
+        android:paddingRight="15dp"
+        android:singleLine="true"
+        android:textColor="@color/textPrimary"
+        android:textColorHint="#7B8792" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:scrollbars="none">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <Button
+                android:id="@+id/btnCompatRefresh"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_button"
+                android:text="Actualizar"
+                android:textAllCaps="false"
+                android:textColor="#111111" />
+            <Button
+                android:id="@+id/btnCompatFavorites"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginLeft="8dp"
+                android:background="@drawable/bg_button_dark"
+                android:text="☆ Favoritos"
+                android:textAllCaps="false"
+                android:textColor="@color/textPrimary" />
+            <Button
+                android:id="@+id/btnCompatWeb"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginLeft="8dp"
+                android:background="@drawable/bg_button_dark"
+                android:text="Web oficial"
+                android:textAllCaps="false"
+                android:textColor="@color/textPrimary" />
+            <Button
+                android:id="@+id/btnCompatDiagnostics"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginLeft="8dp"
+                android:background="@drawable/bg_button_dark"
+                android:text="Diagnóstico"
+                android:textAllCaps="false"
+                android:textColor="@color/textPrimary" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <ProgressBar
+            android:id="@+id/compatLoadingBar"
+            android:layout_width="22dp"
+            android:layout_height="22dp" />
+        <TextView
+            android:id="@+id/compatStatusText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="10dp"
+            android:layout_weight="1"
+            android:text="Cargando…"
+            android:textColor="@color/textSecondary"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <ListView
+        android:id="@+id/compatChannelList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="6dp"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+</LinearLayout>

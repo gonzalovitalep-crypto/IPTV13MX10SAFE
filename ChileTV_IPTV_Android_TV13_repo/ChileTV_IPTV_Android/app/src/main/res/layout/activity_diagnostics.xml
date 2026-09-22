@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Diagnóstico TV Stick"
+        android:textColor="@color/textPrimary"
+        android:textSize="26sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Después de un cierre inesperado vuelve a abrir la app, entra aquí y copia este reporte. Android 13 también informa si el proceso terminó por crash nativo, ANR o memoria."
+        android:textColor="@color/textSecondary"
+        android:textSize="13sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnCopyDebug"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_button"
+            android:focusable="true"
+            android:text="Copiar debug"
+            android:textAllCaps="false"
+            android:textColor="#111111"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnClearDebug"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginLeft="10dp"
+            android:background="@drawable/bg_button_dark"
+            android:focusable="true"
+            android:text="Limpiar"
+            android:textAllCaps="false"
+            android:textColor="@color/textPrimary" />
+
+        <Button
+            android:id="@+id/btnBackDebug"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginLeft="10dp"
+            android:background="@drawable/bg_button_dark"
+            android:focusable="true"
+            android:text="Volver"
+            android:textAllCaps="false"
+            android:textColor="@color/textPrimary" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="14dp"
+        android:layout_weight="1"
+        android:background="#12171C"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/debugReport"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textColor="#E8EDF2"
+            android:textIsSelectable="true"
+            android:textSize="12sp" />
+    </ScrollView>
+</LinearLayout>

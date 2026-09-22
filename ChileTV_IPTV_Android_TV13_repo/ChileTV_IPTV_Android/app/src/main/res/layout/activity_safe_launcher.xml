@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="36dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Chile TV IPTV · MX10 SAFE"
+        android:textColor="@color/textPrimary"
+        android:textSize="30sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Versión de compatibilidad sin AndroidX ni Media3 al iniciar. Usa el reproductor nativo del equipo."
+        android:textColor="@color/textSecondary"
+        android:textSize="15sp"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/deviceSummary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:background="@drawable/bg_search"
+        android:padding="16dp"
+        android:textColor="@color/textPrimary"
+        android:textSize="14sp" />
+
+    <Button
+        android:id="@+id/btnOpenCompatTv"
+        android:layout_width="320dp"
+        android:layout_height="54dp"
+        android:layout_marginTop="28dp"
+        android:background="@drawable/bg_button"
+        android:focusable="true"
+        android:text="Abrir TV · modo MX10"
+        android:textAllCaps="false"
+        android:textColor="#111111"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/btnOpenDiagnostics"
+        android:layout_width="320dp"
+        android:layout_height="50dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_button_dark"
+        android:focusable="true"
+        android:text="Diagnóstico"
+        android:textAllCaps="false"
+        android:textColor="@color/textPrimary" />
+
+    <Button
+        android:id="@+id/btnOpenWeb"
+        android:layout_width="320dp"
+        android:layout_height="50dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_button_dark"
+        android:focusable="true"
+        android:text="Señales web oficiales"
+        android:textAllCaps="false"
+        android:textColor="@color/textPrimary" />
+
+</LinearLayout>
