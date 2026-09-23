@@ -23,3 +23,12 @@ Se mantienen las regiones y fuentes de v5.3: Chile, Latinoamérica, España/Euro
 ## APK
 
 Compilar con GitHub Actions usando `.github/workflows/build-apk.yml` del paquete GitHub-ready.
+
+
+## V5.5 - búsqueda y favoritos
+
+- El teclado ya no pierde el foco después de escribir la primera letra. La grilla no roba el foco mientras el buscador está activo.
+- El filtrado tiene un debounce corto para reducir trabajo en el MX10. Pulsa Buscar/Enter para cerrar el teclado y volver a la grilla.
+- Favoritos más simples: pulsa la estrella visible de cada ficha con mouse/touch; con control remoto usa MENU, botón amarillo (si existe) o mantener OK.
+- Fuente chilena M3U.CL disponible explícitamente como `M3U.CL Chile · CL.m3u`: `https://m3u.cl/lista/CL.m3u`.
+- Versión: `1.6.1-mx10-search-favorites` (10).

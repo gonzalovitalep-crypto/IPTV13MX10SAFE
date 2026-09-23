@@ -21,7 +21,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="TV Hispana · MX10 Memory Safe"
+                android:text="TV Hispana · MX10 Memory Safe 5.5"
                 android:textColor="@color/textPrimary"
                 android:textSize="25sp"
                 android:textStyle="bold" />
@@ -262,7 +262,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="OK abre · mantener OK agrega favorito · Atrás vuelve a regiones"
+            android:text="OK abre · MENU/amarillo o ★ marca favorito · mantener OK también funciona · Atrás vuelve"
             android:textColor="#6F7B86"
             android:textSize="10sp" />
     </LinearLayout>

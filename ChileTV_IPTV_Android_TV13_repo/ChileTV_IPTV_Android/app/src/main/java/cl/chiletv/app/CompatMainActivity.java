@@ -4,11 +4,15 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -31,6 +35,11 @@ public class CompatMainActivity extends Activity {
     private final List<Channel> allChannels = new ArrayList<>();
     private final List<Channel> filteredChannels = new ArrayList<>();
     private final List<Channel> visibleChannels = new ArrayList<>();
+
+    private final Handler searchHandler = new Handler(Looper.getMainLooper());
+    private final Runnable searchRunnable = new Runnable() {
+        @Override public void run() { applyFilter(); }
+    };
 
     private ChannelRepository repository;
     private FavoritesStore favorites;
@@ -109,8 +118,15 @@ public class CompatMainActivity extends Activity {
             }
         });
         channelGrid.setOnKeyListener((v, keyCode, event) -> {
-            if (!isAcceptKey(keyCode, event)) return false;
             int position = channelGrid.getSelectedItemPosition();
+            if (isFavoriteKey(keyCode, event)) {
+                if (position >= 0 && position < visibleChannels.size()) {
+                    toggleFavorite(visibleChannels.get(position));
+                    return true;
+                }
+                return false;
+            }
+            if (!isAcceptKey(keyCode, event)) return false;
             if (position >= 0 && position < visibleChannels.size()) {
                 openChannel(visibleChannels.get(position), "grid_key_" + keyCode);
                 return true;
@@ -123,10 +139,28 @@ public class CompatMainActivity extends Activity {
             return true;
         });
 
+        searchInput.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
         searchInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { applyFilter(); }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                // Debounce corto: evita reconstruir la grilla en cada evento del teclado del MX10.
+                // Importante: NO mover el foco a la grilla mientras el usuario escribe.
+                searchHandler.removeCallbacks(searchRunnable);
+                searchHandler.postDelayed(searchRunnable, 180);
+            }
             @Override public void afterTextChanged(Editable s) {}
+        });
+        searchInput.setOnEditorActionListener((v, actionId, event) -> {
+            boolean confirm = actionId == EditorInfo.IME_ACTION_SEARCH
+                    || actionId == EditorInfo.IME_ACTION_DONE
+                    || (event != null && event.getAction() == KeyEvent.ACTION_UP
+                    && (event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                    || event.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER));
+            if (!confirm) return false;
+            searchHandler.removeCallbacks(searchRunnable);
+            applyFilter();
+            hideKeyboardAndFocusGrid();
+            return true;
         });
 
         sourceButton.setOnClickListener(v -> {
@@ -170,6 +204,32 @@ public class CompatMainActivity extends Activity {
                 || keyCode == KeyEvent.KEYCODE_ENTER
                 || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER
                 || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE;
+    }
+
+    private boolean isFavoriteKey(int keyCode, KeyEvent event) {
+        if (event.getAction() != KeyEvent.ACTION_UP) return false;
+        return keyCode == KeyEvent.KEYCODE_MENU
+                || keyCode == KeyEvent.KEYCODE_BOOKMARK
+                || keyCode == KeyEvent.KEYCODE_PROG_YELLOW
+                || keyCode == KeyEvent.KEYCODE_STAR;
+    }
+
+    private void hideKeyboardAndFocusGrid() {
+        try {
+            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (imm != null && searchInput != null) {
+                imm.hideSoftInputFromWindow(searchInput.getWindowToken(), 0);
+            }
+        } catch (Throwable ignored) {}
+        try { searchInput.clearFocus(); } catch (Throwable ignored) {}
+        if (channelGrid != null && !visibleChannels.isEmpty()) {
+            channelGrid.postDelayed(() -> {
+                try {
+                    channelGrid.setSelection(0);
+                    channelGrid.requestFocus();
+                } catch (Throwable ignored) {}
+            }, 80);
+        }
     }
 
     private void showCatalogs() {
@@ -278,11 +338,15 @@ public class CompatMainActivity extends Activity {
         if (currentPage >= pages) currentPage = pages - 1;
         if (currentPage < 0) currentPage = 0;
 
+        final boolean searchHadFocus = searchInput != null && searchInput.hasFocus();
         visibleChannels.clear();
         int start = currentPage * PAGE_SIZE;
         int end = Math.min(start + PAGE_SIZE, filteredChannels.size());
         for (int i = start; i < end; i++) visibleChannels.add(filteredChannels.get(i));
         channelAdapter.notifyDataSetChanged();
+        if (searchHadFocus) {
+            try { searchInput.requestFocus(); } catch (Throwable ignored) {}
+        }
 
         prevPage.setEnabled(currentPage > 0);
         nextPage.setEnabled(currentPage + 1 < pages);
@@ -292,7 +356,8 @@ public class CompatMainActivity extends Activity {
         statusText.setText(filteredChannels.size() + " canales · " + sourceLabel
                 + (onlyFavorites ? " · favoritos" : "")
                 + " · " + visibleChannels.size() + " en pantalla");
-        if (!visibleChannels.isEmpty()) {
+        final boolean searchHasFocus = searchInput != null && searchInput.hasFocus();
+        if (!visibleChannels.isEmpty() && !searchHasFocus) {
             channelGrid.postDelayed(() -> {
                 try {
                     channelGrid.setSelection(0);
@@ -304,7 +369,7 @@ public class CompatMainActivity extends Activity {
 
     private void toggleFavorite(Channel channel) {
         boolean nowFavorite = favorites.toggle(channel);
-        Toast.makeText(this, nowFavorite ? "Agregado a favoritos" : "Quitado de favoritos", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, nowFavorite ? "★ Agregado a favoritos" : "☆ Quitado de favoritos", Toast.LENGTH_SHORT).show();
         applyFilter();
     }
 
@@ -405,6 +470,7 @@ public class CompatMainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        searchHandler.removeCallbacksAndMessages(null);
         if (repository != null) repository.shutdown();
         super.onDestroy();
     }
@@ -501,8 +567,15 @@ public class CompatMainActivity extends Activity {
 
                 TextView star = new TextView(CompatMainActivity.this);
                 star.setTextColor(Color.rgb(245, 196, 0));
-                star.setTextSize(18);
-                star.setPadding(dp(7), 0, 0, 0);
+                star.setTextSize(22);
+                star.setGravity(Gravity.CENTER);
+                star.setMinWidth(dp(42));
+                star.setMinHeight(dp(36));
+                star.setPadding(dp(8), 0, dp(8), 0);
+                star.setBackgroundResource(R.drawable.bg_button_dark);
+                star.setClickable(true);
+                star.setFocusable(false);
+                star.setContentDescription("Marcar o quitar favorito");
 
                 TextView subtitle = new TextView(CompatMainActivity.this);
                 subtitle.setTextColor(Color.rgb(156, 168, 180));
@@ -535,8 +608,13 @@ public class CompatMainActivity extends Activity {
             holder.star.setText(favorites.isFavorite(c) ? "★" : "☆");
 
             final Channel boundChannel = c;
+            holder.star.setOnClickListener(v -> toggleFavorite(boundChannel));
             convertView.setOnClickListener(v -> openChannel(boundChannel, "card_click"));
             convertView.setOnKeyListener((v, keyCode, event) -> {
+                if (isFavoriteKey(keyCode, event)) {
+                    toggleFavorite(boundChannel);
+                    return true;
+                }
                 if (isAcceptKey(keyCode, event)) {
                     openChannel(boundChannel, "card_key_" + keyCode);
                     return true;

@@ -10,8 +10,8 @@ android {
         applicationId 'cl.chiletv.app.safe'
         minSdk 21
         targetSdk 25
-        versionCode 9
-        versionName '1.6.0-mx10-memory-player'
+        versionCode 10
+        versionName '1.6.1-mx10-search-favorites'
     }
 
     buildTypes {
