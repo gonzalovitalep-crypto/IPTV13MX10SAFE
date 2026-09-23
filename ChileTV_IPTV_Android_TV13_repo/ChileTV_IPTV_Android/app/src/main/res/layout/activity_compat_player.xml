@@ -39,7 +39,7 @@
             android:layout_marginTop="20dp"
             android:background="@drawable/bg_button"
             android:focusable="true"
-            android:text="Abrir con reproductor externo · recomendado"
+            android:text="VLC / reproductor externo · recomendado"
             android:textAllCaps="false"
             android:textColor="#111111"
             android:textStyle="bold" />
@@ -62,7 +62,7 @@
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_button_dark"
             android:focusable="true"
-            android:text="Abrir URL / navegador"
+            android:text="Abrir con otro reproductor"
             android:textAllCaps="false"
             android:textColor="#FFFFFF" />
     </LinearLayout>

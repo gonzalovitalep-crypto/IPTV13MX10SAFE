@@ -4,14 +4,14 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,6 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class ChannelRepository {
 
@@ -139,9 +140,14 @@ public class ChannelRepository {
     };
     private static final String[] EUROPE_SPANISH_COUNTRIES = {"ES", "AD"};
 
+    private static final long CACHE_TTL_MS = 30L * 60L * 1000L;
+    private static final long MAX_CACHE_BYTES = 8L * 1024L * 1024L;
+
     private final Context context;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
+    private final Object taskLock = new Object();
+    private Future<?> activeTask;
 
     public ChannelRepository(Context context) {
         this.context = context.getApplicationContext();
@@ -153,31 +159,77 @@ public class ChannelRepository {
     }
 
     public void load(final Source source, final Callback callback) {
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    String text = downloadAll(source.urls);
-                    List<Channel> channels = prepareChannels(M3UParser.parse(text), source);
-                    if (channels.isEmpty()) throw new IllegalStateException("La lista llegó vacía.");
-                    saveCache(source.cacheFile, text);
-                    postLoaded(callback, channels, false, source);
-                } catch (Exception networkError) {
+        load(source, false, callback);
+    }
+
+    public void load(final Source source, final boolean forceRefresh, final Callback callback) {
+        synchronized (taskLock) {
+            if (activeTask != null) activeTask.cancel(true);
+            activeTask = executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    if (Thread.currentThread().isInterrupted()) return;
+                    File cache = new File(context.getFilesDir(), source.cacheFile);
                     try {
-                        String cached = readCache(source.cacheFile);
-                        List<Channel> channels = prepareChannels(M3UParser.parse(cached), source);
-                        if (channels.isEmpty()) throw new IllegalStateException("No existe una caché válida.");
-                        postLoaded(callback, channels, true, source);
-                    } catch (Exception cacheError) {
-                        final String message = "No fue posible descargar " + source.label
-                                + ". Prueba otra fuente o revisa la conexión.";
-                        main.post(new Runnable() {
-                            @Override public void run() { callback.onError(message, source); }
-                        });
+                        if (!forceRefresh && isFresh(cache)) {
+                            List<Channel> channels = parseCache(cache, source);
+                            if (!channels.isEmpty()) {
+                                postLoaded(callback, channels, true, source);
+                                return;
+                            }
+                        }
+
+                        File temp = new File(context.getCacheDir(), source.cacheFile + ".tmp");
+                        if (temp.exists()) temp.delete();
+                        downloadAllToFile(source.urls, temp);
+                        if (Thread.currentThread().isInterrupted()) {
+                            temp.delete();
+                            return;
+                        }
+                        List<Channel> channels = parseCache(temp, source);
+                        if (channels.isEmpty()) throw new IllegalStateException("La lista llegó vacía.");
+                        replaceFile(temp, cache);
+                        postLoaded(callback, channels, false, source);
+                    } catch (Exception networkError) {
+                        try {
+                            if (Thread.currentThread().isInterrupted()) return;
+                            List<Channel> channels = parseCache(cache, source);
+                            if (channels.isEmpty()) throw new IllegalStateException("No existe una caché válida.");
+                            postLoaded(callback, channels, true, source);
+                        } catch (Exception cacheError) {
+                            final String message = "No fue posible descargar " + source.label
+                                    + ". Prueba otra fuente o revisa la conexión.";
+                            main.post(new Runnable() {
+                                @Override public void run() { callback.onError(message, source); }
+                            });
+                        }
                     }
                 }
+            });
+        }
+    }
+
+    public void cancelActiveLoad() {
+        synchronized (taskLock) {
+            if (activeTask != null) {
+                activeTask.cancel(true);
+                activeTask = null;
             }
-        });
+        }
+    }
+
+    private boolean isFresh(File file) {
+        return file.exists() && file.length() > 0 && (System.currentTimeMillis() - file.lastModified()) < CACHE_TTL_MS;
+    }
+
+    private List<Channel> parseCache(File file, Source source) throws Exception {
+        if (file == null || !file.exists() || file.length() <= 0) return new ArrayList<Channel>();
+        FileInputStream in = new FileInputStream(file);
+        try {
+            return prepareChannels(M3UParser.parse(new BufferedInputStream(in, 16384)), source);
+        } finally {
+            try { in.close(); } catch (Exception ignored) {}
+        }
     }
 
     private void postLoaded(final Callback callback, final List<Channel> channels,
@@ -188,6 +240,7 @@ public class ChannelRepository {
     }
 
     public void shutdown() {
+        cancelActiveLoad();
         executor.shutdownNow();
     }
 
@@ -304,72 +357,92 @@ public class ChannelRepository {
                 || s.contains("chv noticias") || s.contains("chv deportes");
     }
 
-    private String downloadAll(String[] sources) throws Exception {
-        StringBuilder combined = new StringBuilder("#EXTM3U\n");
+    private void downloadAllToFile(String[] sources, File output) throws Exception {
         Exception last = null;
         int success = 0;
-        for (String source : sources) {
-            try {
-                String downloaded = download(source);
-                combined.append(downloaded).append('\n');
-                success++;
-            } catch (Exception e) {
-                last = e;
+        long total = 0L;
+        BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(output, false), 16384);
+        try {
+            out.write("#EXTM3U\n".getBytes("UTF-8"));
+            total += 8;
+            for (String source : sources) {
+                if (Thread.currentThread().isInterrupted()) throw new InterruptedException("cancelled");
+                HttpURLConnection connection = null;
+                try {
+                    connection = openConnection(source);
+                    int code = connection.getResponseCode();
+                    if (code < 200 || code >= 300) throw new IllegalStateException("HTTP " + code);
+                    InputStream raw = connection.getInputStream();
+                    BufferedInputStream in = new BufferedInputStream(raw, 16384);
+                    try {
+                        byte[] buffer = new byte[16384];
+                        int n;
+                        while ((n = in.read(buffer)) >= 0) {
+                            if (Thread.currentThread().isInterrupted()) throw new InterruptedException("cancelled");
+                            total += n;
+                            if (total > MAX_CACHE_BYTES) throw new IllegalStateException("Lista demasiado grande");
+                            out.write(buffer, 0, n);
+                        }
+                        out.write('\n');
+                    } finally {
+                        try { in.close(); } catch (Exception ignored) {}
+                    }
+                    success++;
+                } catch (Exception e) {
+                    last = e;
+                } finally {
+                    if (connection != null) connection.disconnect();
+                }
             }
+            out.flush();
+        } finally {
+            try { out.close(); } catch (Exception ignored) {}
         }
         if (success == 0) {
+            output.delete();
             if (last != null) throw last;
             throw new IllegalStateException("Sin fuentes disponibles");
         }
-        return combined.toString();
     }
 
-    private String download(String source) throws Exception {
+    private HttpURLConnection openConnection(String source) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(source).openConnection();
-        connection.setConnectTimeout(15000);
-        connection.setReadTimeout(30000);
+        connection.setConnectTimeout(12000);
+        connection.setReadTimeout(20000);
         connection.setInstanceFollowRedirects(true);
         connection.setRequestProperty("User-Agent",
                 "Mozilla/5.0 (Linux; Android 7.1.2; MX10 Build/N2G47H) "
-                        + "AppleWebKit/537.36 Chrome/88.0 Mobile Safari/537.36 ChileTVIPTV/1.5");
+                        + "AppleWebKit/537.36 Chrome/88.0 Mobile Safari/537.36 TVHispana/1.6");
         connection.setRequestProperty("Accept", "application/x-mpegURL,application/vnd.apple.mpegurl,text/plain,*/*");
         connection.setRequestProperty("Accept-Encoding", "identity");
         connection.setRequestProperty("Connection", "close");
+        return connection;
+    }
 
-        int code = connection.getResponseCode();
-        if (code < 200 || code >= 300) {
-            connection.disconnect();
-            throw new IllegalStateException("HTTP " + code);
+    private void replaceFile(File temp, File cache) throws Exception {
+        if (cache.exists() && !cache.delete()) {
+            copyFile(temp, cache);
+            temp.delete();
+            return;
         }
+        if (!temp.renameTo(cache)) {
+            copyFile(temp, cache);
+            temp.delete();
+        }
+    }
 
-        try (InputStream in = connection.getInputStream()) {
-            return readFully(in);
+    private void copyFile(File source, File destination) throws Exception {
+        BufferedInputStream in = new BufferedInputStream(new FileInputStream(source), 16384);
+        BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(destination, false), 16384);
+        try {
+            byte[] buffer = new byte[16384];
+            int n;
+            while ((n = in.read(buffer)) >= 0) out.write(buffer, 0, n);
+            out.flush();
         } finally {
-            connection.disconnect();
+            try { in.close(); } catch (Exception ignored) {}
+            try { out.close(); } catch (Exception ignored) {}
         }
-    }
-
-    private void saveCache(String cacheName, String text) throws Exception {
-        File file = new File(context.getFilesDir(), cacheName);
-        try (FileOutputStream out = new FileOutputStream(file, false)) {
-            out.write(text.getBytes(StandardCharsets.UTF_8));
-        }
-    }
-
-    private String readCache(String cacheName) throws Exception {
-        File file = new File(context.getFilesDir(), cacheName);
-        if (!file.exists()) throw new IllegalStateException("Sin caché");
-        try (FileInputStream in = new FileInputStream(file)) {
-            return readFully(in);
-        }
-    }
-
-    private static String readFully(InputStream in) throws Exception {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buffer = new byte[8192];
-        int n;
-        while ((n = in.read(buffer)) >= 0) out.write(buffer, 0, n);
-        return out.toString(StandardCharsets.UTF_8.name());
     }
 
     private static String safe(String value) {

@@ -4,6 +4,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Modelo deliberadamente liviano para el MX10. Los mapas de cabeceras vacíos
+ * comparten una instancia inmutable en vez de reservar un HashMap por canal.
+ */
 public class Channel {
     private final String id;
     private final String name;
@@ -23,7 +27,11 @@ public class Channel {
         this.country = value(country);
         this.language = value(language);
         this.url = value(url);
-        this.headers = Collections.unmodifiableMap(new HashMap<>(headers == null ? Collections.emptyMap() : headers));
+        if (headers == null || headers.isEmpty()) {
+            this.headers = Collections.emptyMap();
+        } else {
+            this.headers = Collections.unmodifiableMap(new HashMap<String, String>(headers));
+        }
     }
 
     private static String value(String s) {

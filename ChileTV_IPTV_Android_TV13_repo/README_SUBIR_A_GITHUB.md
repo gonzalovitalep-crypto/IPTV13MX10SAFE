@@ -1,17 +1,10 @@
-# TV Hispana MX10 · v5.3 regiones
+# TV Hispana MX10 v5.4 Memory Safe
 
-Sube el contenido de este ZIP a la raíz de tu repositorio GitHub, reemplazando los archivos existentes.
+Sube/reemplaza en la raiz del repositorio:
 
-La v5.3 conserva la base Ultra Safe que funciona en el MX10/API 25 y cambia la navegación:
+- `.github/`
+- `ChileTV_IPTV_Android_TV13_repo/`
 
-1. **Chile**
-2. **Latinoamérica**
-3. **España / Europa**
-4. **EE.UU. Hispano**
-5. **Todo en español**
+Luego haz Commit. GitHub Actions compilara `TV-Hispana-MX10-v5-4-MemorySafe`.
 
-Al entrar a una región, los canales aparecen como fichas compactas distribuidas automáticamente en columnas y filas. El botón **Fuente** permite alternar entre proveedores públicos compatibles con esa región.
-
-GitHub Actions genera el artefacto:
-
-`TV-Hispana-MX10-v5-3`
+Version esperada en Diagnostico: `1.6.0-mx10-memory-player (9)`.

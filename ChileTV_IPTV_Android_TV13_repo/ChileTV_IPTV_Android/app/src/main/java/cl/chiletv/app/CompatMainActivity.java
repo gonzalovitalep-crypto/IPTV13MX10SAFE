@@ -26,7 +26,10 @@ import java.util.Locale;
 import java.util.Map;
 
 public class CompatMainActivity extends Activity {
+    private static final int PAGE_SIZE = 96;
+
     private final List<Channel> allChannels = new ArrayList<>();
+    private final List<Channel> filteredChannels = new ArrayList<>();
     private final List<Channel> visibleChannels = new ArrayList<>();
 
     private ChannelRepository repository;
@@ -44,8 +47,13 @@ public class CompatMainActivity extends Activity {
     private Button favoriteFilter;
     private Button sourceButton;
     private Button backRegions;
+    private Button prevPage;
+    private Button nextPage;
+    private TextView pageText;
 
     private boolean onlyFavorites = false;
+    private int currentPage = 0;
+    private boolean needsReloadAfterPlayer = false;
     private ChannelRepository.Catalog currentCatalog = null;
     private ChannelRepository.Source currentSource = null;
 
@@ -71,6 +79,9 @@ public class CompatMainActivity extends Activity {
         Button diagnostics = findViewById(R.id.btnCompatDiagnostics);
         Button web = findViewById(R.id.btnCompatWeb);
         Button home = findViewById(R.id.btnCompatHome);
+        prevPage = findViewById(R.id.btnCompatPrevPage);
+        nextPage = findViewById(R.id.btnCompatNextPage);
+        pageText = findViewById(R.id.compatPageText);
 
         catalogAdapter = new CatalogAdapter();
         channelAdapter = new ChannelGridAdapter();
@@ -125,7 +136,20 @@ public class CompatMainActivity extends Activity {
             loadChannels();
         });
         refresh.setOnClickListener(v -> {
-            if (currentSource != null) loadChannels();
+            if (currentSource != null) loadChannels(true);
+        });
+        prevPage.setOnClickListener(v -> {
+            if (currentPage > 0) {
+                currentPage--;
+                renderPage();
+            }
+        });
+        nextPage.setOnClickListener(v -> {
+            int pages = pageCount();
+            if (currentPage + 1 < pages) {
+                currentPage++;
+                renderPage();
+            }
         });
         favoriteFilter.setOnClickListener(v -> {
             onlyFavorites = !onlyFavorites;
@@ -153,7 +177,9 @@ public class CompatMainActivity extends Activity {
         currentSource = null;
         onlyFavorites = false;
         allChannels.clear();
+        filteredChannels.clear();
         visibleChannels.clear();
+        currentPage = 0;
         channelAdapter.notifyDataSetChanged();
         searchInput.setText("");
         searchInput.clearFocus();
@@ -181,23 +207,27 @@ public class CompatMainActivity extends Activity {
 
         catalogGrid.setVisibility(View.GONE);
         channelArea.setVisibility(View.VISIBLE);
-        loadChannels();
+        loadChannels(false);
     }
 
     private void updateSourceButton() {
         sourceButton.setText(currentSource == null ? "Fuente" : "Fuente: " + currentSource.label);
     }
 
-    private void loadChannels() {
+    private void loadChannels() { loadChannels(false); }
+
+    private void loadChannels(boolean forceRefresh) {
         if (currentSource == null) return;
         final ChannelRepository.Source requested = currentSource;
         loadingBar.setVisibility(View.VISIBLE);
         statusText.setText("Cargando " + requested.label + "…");
         allChannels.clear();
+        filteredChannels.clear();
         visibleChannels.clear();
+        currentPage = 0;
         channelAdapter.notifyDataSetChanged();
 
-        repository.load(requested, new ChannelRepository.Callback() {
+        repository.load(requested, forceRefresh, new ChannelRepository.Callback() {
             @Override
             public void onLoaded(List<Channel> channels, boolean fromCache, ChannelRepository.Source source) {
                 if (source != currentSource) return;
@@ -224,7 +254,7 @@ public class CompatMainActivity extends Activity {
     private void applyFilter() {
         if (currentCatalog == null) return;
         String q = searchInput == null ? "" : searchInput.getText().toString().trim().toLowerCase(Locale.ROOT);
-        visibleChannels.clear();
+        filteredChannels.clear();
         for (Channel c : allChannels) {
             String country = ChannelRepository.countryLabel(c).toLowerCase(Locale.ROOT);
             boolean textOk = q.isEmpty()
@@ -232,19 +262,43 @@ public class CompatMainActivity extends Activity {
                     || c.getGroup().toLowerCase(Locale.ROOT).contains(q)
                     || country.contains(q);
             boolean favOk = !onlyFavorites || favorites.isFavorite(c);
-            if (textOk && favOk) visibleChannels.add(c);
+            if (textOk && favOk) filteredChannels.add(c);
         }
+        currentPage = 0;
+        renderPage();
+    }
+
+    private int pageCount() {
+        if (filteredChannels.isEmpty()) return 1;
+        return (filteredChannels.size() + PAGE_SIZE - 1) / PAGE_SIZE;
+    }
+
+    private void renderPage() {
+        int pages = pageCount();
+        if (currentPage >= pages) currentPage = pages - 1;
+        if (currentPage < 0) currentPage = 0;
+
+        visibleChannels.clear();
+        int start = currentPage * PAGE_SIZE;
+        int end = Math.min(start + PAGE_SIZE, filteredChannels.size());
+        for (int i = start; i < end; i++) visibleChannels.add(filteredChannels.get(i));
         channelAdapter.notifyDataSetChanged();
+
+        prevPage.setEnabled(currentPage > 0);
+        nextPage.setEnabled(currentPage + 1 < pages);
+        pageText.setText("Página " + (currentPage + 1) + "/" + pages);
+
         String sourceLabel = currentSource == null ? "" : currentSource.label;
-        statusText.setText(visibleChannels.size() + " canales · " + sourceLabel
-                + (onlyFavorites ? " · favoritos" : ""));
+        statusText.setText(filteredChannels.size() + " canales · " + sourceLabel
+                + (onlyFavorites ? " · favoritos" : "")
+                + " · " + visibleChannels.size() + " en pantalla");
         if (!visibleChannels.isEmpty()) {
             channelGrid.postDelayed(() -> {
                 try {
                     channelGrid.setSelection(0);
                     channelGrid.requestFocus();
                 } catch (Throwable ignored) {}
-            }, 150);
+            }, 120);
         }
     }
 
@@ -284,10 +338,33 @@ public class CompatMainActivity extends Activity {
             }
             i.putExtra("headers", headers);
             startActivity(i);
+            needsReloadAfterPlayer = true;
+            releaseCatalogMemoryForPlayer();
         } catch (Throwable t) {
             DiagnosticStore.savePlayerLog(this, channel.getName(), channelUrl,
                     "ERROR abriendo player | " + t.getClass().getName() + ": " + String.valueOf(t.getMessage()));
             Toast.makeText(this, "No se pudo abrir el canal: " + t.getClass().getSimpleName(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void releaseCatalogMemoryForPlayer() {
+        try { repository.cancelActiveLoad(); } catch (Throwable ignored) {}
+        allChannels.clear();
+        filteredChannels.clear();
+        visibleChannels.clear();
+        channelAdapter.notifyDataSetChanged();
+        try {
+            channelGrid.setDrawingCacheEnabled(false);
+            channelGrid.destroyDrawingCache();
+        } catch (Throwable ignored) {}
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (needsReloadAfterPlayer && currentSource != null && allChannels.isEmpty()) {
+            needsReloadAfterPlayer = false;
+            loadChannels(false);
         }
     }
 
@@ -298,6 +375,32 @@ public class CompatMainActivity extends Activity {
         } else {
             super.onBackPressed();
         }
+    }
+
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        try {
+            channelGrid.setDrawingCacheEnabled(false);
+            channelGrid.destroyDrawingCache();
+            catalogGrid.setDrawingCacheEnabled(false);
+            catalogGrid.destroyDrawingCache();
+        } catch (Throwable ignored) {}
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW && currentCatalog == null) {
+            allChannels.clear();
+            filteredChannels.clear();
+            visibleChannels.clear();
+            channelAdapter.notifyDataSetChanged();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        try {
+            channelGrid.setDrawingCacheEnabled(false);
+            channelGrid.destroyDrawingCache();
+        } catch (Throwable ignored) {}
     }
 
     @Override

@@ -1,59 +1,25 @@
-# TV Hispana · MX10 Ultra Safe v5.3
+# TV Hispana MX10 Memory Safe v5.4
 
-Versión específica para MX10/RK322x cuyo firmware muestra Android 13 pero expone API 25.
+Aplicación Android para TV Box / Stick Rockchip MX10 con runtime real API 25 y memoria limitada.
 
-## Cambio v5.3
+## Cambios v5.4
 
-- Nueva pantalla principal con fichas grandes por región:
-  - Chile
-  - Latinoamérica
-  - España / Europa
-  - EE.UU. Hispano
-  - Todo en español
-- Dentro de cada región, los canales se muestran como fichas compactas en una cuadrícula adaptable para aprovechar mejor la pantalla del TV.
-- Las fichas son deliberadamente de texto (sin descargar logos) para reducir memoria en el MX10, que reporta 128 MB por app.
-- Búsqueda por nombre, país o categoría.
-- Fuentes alternativas por región mediante el botón **Fuente**.
-- Favoritos con pulsación larga.
-- Mantiene navegación por control remoto reforzada de v5.2.
-- Mantiene selector seguro: reproductor externo, reproductor nativo bajo demanda o navegador.
+- Catálogo paginado: solo 96 fichas por página para reducir presión de memoria y GC.
+- Caché de playlists en disco con TTL de 30 minutos; no mantiene M3U completas en RAM.
+- Descarga y parser M3U por streaming, sin `String.split()` sobre listas de varios MB.
+- Cancela cargas anteriores al cambiar de fuente.
+- Al abrir un canal libera el catálogo de memoria; al volver lo reconstruye desde caché.
+- El player corre en proceso separado (`:player`) para aislar memoria y fallos del firmware.
+- Antes de usar `MediaPlayer`, realiza un probe HTTP de la señal.
+- En HLS master selecciona una variante de hasta 720p y ~2.5 Mbps cuando existe.
+- Identifica el error `1 / -2147483648` como error de sistema de bajo nivel del MediaPlayer.
+- Detecta VLC (`org.videolan.vlc`). Si está instalado, lo abre directamente; si no, ofrece la página oficial de instalación.
+- El debug ahora informa heap Java, cache y conserva el último evento del player entre procesos.
 
-## Fuentes públicas configuradas
+## Fuentes
 
-### Chile
-- dearbulut / Chile verificado
-- IPTV-org Chile
-- M3U.CL Chile
-- Free-TV, filtrado a Chile
+Se mantienen las regiones y fuentes de v5.3: Chile, Latinoamérica, España/Europa, EE.UU. Hispano y Todo en español.
 
-### Latinoamérica
-- IPTV-org Hispanoamérica
-- IPTV-org Latinoamérica, filtrado a países hispanohablantes
-- IPTV-org idioma español, filtrado a Latinoamérica
-- dearbulut idioma español, filtrado a Latinoamérica
-- M3U.CL combinado con Argentina, Bolivia, Chile, Colombia, Ecuador y México
+## APK
 
-### España / Europa
-- IPTV-org España
-- IPTV-org idioma español, filtrado a España/Andorra
-- M3U.CL España
-- Free-TV filtrado a España/Andorra
-
-### EE.UU. Hispano
-- IPTV-org idioma español, filtrado a emisiones de EE.UU.
-- dearbulut idioma español, filtrado a emisiones de EE.UU.
-
-### Todo en español
-- IPTV-org idioma español
-- dearbulut idioma español
-
-La disponibilidad de cada stream depende de la fuente y puede cambiar.
-
-## Compatibilidad MX10
-
-- Sin AndroidX.
-- Sin Media3.
-- Sin ExoPlayer.
-- `minSdk 21`, `targetSdk 25`, `compileSdk 35`.
-- Java 8.
-- No inicializa `VideoView` al abrir la app.
+Compilar con GitHub Actions usando `.github/workflows/build-apk.yml` del paquete GitHub-ready.

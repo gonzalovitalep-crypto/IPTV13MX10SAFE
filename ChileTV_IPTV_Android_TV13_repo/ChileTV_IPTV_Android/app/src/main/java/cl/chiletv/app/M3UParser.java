@@ -1,5 +1,9 @@
 package cl.chiletv.app;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -10,6 +14,10 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Parser M3U de bajo consumo. Procesa línea por línea para evitar String.split()
+ * sobre listas de varios MB, algo especialmente importante en el MX10 (128 MB).
+ */
 public final class M3UParser {
     private static final Pattern ATTR = Pattern.compile("([A-Za-z0-9_-]+)=\\\"([^\\\"]*)\\\"");
     private static final Pattern JSON_HEADER = Pattern.compile("\\\"([^\\\"]+)\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"");
@@ -17,34 +25,47 @@ public final class M3UParser {
     private M3UParser() {}
 
     public static List<Channel> parse(String text) {
-        List<Channel> result = new ArrayList<>();
-        if (text == null || text.trim().isEmpty()) return result;
+        if (text == null || text.trim().isEmpty()) return new ArrayList<Channel>();
+        try {
+            return parse(new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            return new ArrayList<Channel>();
+        }
+    }
 
+    public static List<Channel> parse(InputStream input) throws Exception {
+        List<Channel> result = new ArrayList<Channel>();
+        if (input == null) return result;
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8), 16384);
         String pendingInfo = null;
-        Map<String, String> pendingHeaders = new HashMap<>();
+        Map<String, String> pendingHeaders = null;
+        String raw;
 
-        String[] lines = text.replace("\r", "").split("\n");
-        for (String raw : lines) {
+        while ((raw = reader.readLine()) != null) {
             String line = raw.trim();
             if (line.isEmpty()) continue;
 
             if (line.startsWith("#EXTINF:")) {
                 pendingInfo = line;
-                pendingHeaders = new HashMap<>();
+                pendingHeaders = null;
                 continue;
             }
 
             if (line.regionMatches(true, 0, "#EXTVLCOPT:http-referrer=", 0, 25)) {
+                if (pendingHeaders == null) pendingHeaders = new HashMap<String, String>(2);
                 pendingHeaders.put("Referer", line.substring(line.indexOf('=') + 1).trim());
                 continue;
             }
 
             if (line.regionMatches(true, 0, "#EXTVLCOPT:http-user-agent=", 0, 27)) {
+                if (pendingHeaders == null) pendingHeaders = new HashMap<String, String>(2);
                 pendingHeaders.put("User-Agent", line.substring(line.indexOf('=') + 1).trim());
                 continue;
             }
 
             if (line.startsWith("#EXTHTTP:")) {
+                if (pendingHeaders == null) pendingHeaders = new HashMap<String, String>(2);
                 Matcher hm = JSON_HEADER.matcher(line.substring(9));
                 while (hm.find()) pendingHeaders.put(hm.group(1), hm.group(2));
                 continue;
@@ -56,7 +77,9 @@ public final class M3UParser {
             Map<String, String> attrs = parseAttrs(pendingInfo);
             String name = parseName(pendingInfo);
             String url = line;
-            Map<String, String> headers = new HashMap<>(pendingHeaders);
+            Map<String, String> headers = pendingHeaders == null
+                    ? new HashMap<String, String>(0)
+                    : new HashMap<String, String>(pendingHeaders);
 
             int pipe = url.indexOf('|');
             if (pipe > 0) {
@@ -79,7 +102,7 @@ public final class M3UParser {
             }
 
             pendingInfo = null;
-            pendingHeaders = new HashMap<>();
+            pendingHeaders = null;
         }
         return result;
     }
@@ -90,7 +113,7 @@ public final class M3UParser {
     }
 
     private static Map<String, String> parseAttrs(String info) {
-        Map<String, String> attrs = new HashMap<>();
+        Map<String, String> attrs = new HashMap<String, String>(8);
         Matcher m = ATTR.matcher(info);
         while (m.find()) attrs.put(m.group(1).toLowerCase(Locale.ROOT), m.group(2).trim());
         return attrs;

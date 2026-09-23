@@ -3,12 +3,12 @@ package cl.chiletv.app;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.Browser;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -26,24 +26,35 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Reproductor ultra-safe para firmwares MX10/RK322x que reportan API 25.
- * Al entrar NO crea VideoView ni inicializa MediaPlayer. El usuario elige primero
- * entre un reproductor externo (recomendado), navegador o el motor nativo.
+ * Player de compatibilidad para RK322x/API 25.
+ * - Se ejecuta en un proceso separado para que la memoria del player no se acumule
+ *   en el catálogo principal.
+ * - Comprueba la URL antes de crear MediaPlayer.
+ * - Para HLS master intenta elegir una variante <=720p/2.5Mbps.
+ * - VLC se ofrece como motor externo recomendado cuando está instalado.
  */
 public class CompatPlayerActivity extends Activity {
     private static final long OVERLAY_TIMEOUT = 4500L;
+    private static final String VLC_PACKAGE = "org.videolan.vlc";
+    private static final String VLC_DOWNLOAD_PAGE = "https://www.videolan.org/vlc/download-android.html";
 
     private FrameLayout playerRoot;
     private LinearLayout gatePanel;
     private View overlay;
     private View errorPanel;
     private TextView errorText;
+    private TextView gateInfo;
     private ProgressBar loading;
+    private Button externalPrimary;
+    private Button errorExternal;
+    private Button otherPlayer;
     private VideoView videoView;
     private boolean prepared;
     private String name;
-    private String url;
+    private String originalUrl;
+    private String resolvedUrl;
     private String source;
+    private Thread probeThread;
     private final Map<String, String> headers = new HashMap<String, String>();
     private final Handler handler = new Handler(Looper.getMainLooper());
 
@@ -70,16 +81,17 @@ public class CompatPlayerActivity extends Activity {
         loading = (ProgressBar) findViewById(R.id.compatPlayerLoading);
         TextView title = (TextView) findViewById(R.id.compatPlayerTitle);
         TextView gateTitle = (TextView) findViewById(R.id.compatGateTitle);
-        TextView gateInfo = (TextView) findViewById(R.id.compatGateInfo);
+        gateInfo = (TextView) findViewById(R.id.compatGateInfo);
         Button close = (Button) findViewById(R.id.btnCompatClose);
-        Button external = (Button) findViewById(R.id.btnCompatExternalPrimary);
+        externalPrimary = (Button) findViewById(R.id.btnCompatExternalPrimary);
         Button internal = (Button) findViewById(R.id.btnCompatInternal);
-        Button browser = (Button) findViewById(R.id.btnCompatBrowser);
+        otherPlayer = (Button) findViewById(R.id.btnCompatBrowser);
         Button retry = (Button) findViewById(R.id.btnCompatRetry);
-        Button errorExternal = (Button) findViewById(R.id.btnCompatExternal);
+        errorExternal = (Button) findViewById(R.id.btnCompatExternal);
 
         name = getIntent().getStringExtra("name");
-        url = getIntent().getStringExtra("url");
+        originalUrl = getIntent().getStringExtra("url");
+        resolvedUrl = originalUrl;
         source = getIntent().getStringExtra("source");
         Bundle b = getIntent().getBundleExtra("headers");
         if (b != null) {
@@ -92,57 +104,107 @@ public class CompatPlayerActivity extends Activity {
         String channelName = name == null ? "Canal" : name;
         title.setText(channelName);
         gateTitle.setText(channelName);
-        gateInfo.setText("MX10 / API " + android.os.Build.VERSION.SDK_INT
-                + " · Fuente: " + (source == null ? "desconocida" : source)
-                + "\nModo externo recomendado: evita inicializar el decodificador Rockchip dentro de esta app.");
+        updateGateInfo("Listo. El modo interno comprobará primero la señal y reducirá HLS master a una variante compatible.");
+        updateExternalButtons();
+        otherPlayer.setText("Abrir con otro reproductor");
 
         close.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { finish(); }
         });
-        external.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { openExternal(); }
+        externalPrimary.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { openVlcOrInstall(); }
         });
         internal.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { startNativePlayback(); }
         });
-        browser.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { openBrowser(); }
+        otherPlayer.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { openExternalChooser(); }
         });
         retry.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { startNativePlayback(); }
         });
         errorExternal.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { openExternal(); }
+            @Override public void onClick(View v) { openVlcOrInstall(); }
         });
 
         loading.setVisibility(View.GONE);
         overlay.setVisibility(View.GONE);
         errorPanel.setVisibility(View.GONE);
         gatePanel.setVisibility(View.VISIBLE);
-        external.requestFocus();
-        DiagnosticStore.savePlayerLog(this, name, url, "PLAYER GATE abierto | sin decoder inicializado | fuente=" + safe(source));
+        externalPrimary.requestFocus();
+        DiagnosticStore.savePlayerLog(this, name, originalUrl,
+                "PLAYER GATE abierto | proceso player separado | sin decoder inicializado | fuente=" + safe(source));
+    }
+
+    private void updateGateInfo(String extra) {
+        gateInfo.setText("MX10 / API " + android.os.Build.VERSION.SDK_INT
+                + " · Fuente: " + (source == null ? "desconocida" : source)
+                + "\n" + extra);
+    }
+
+    private void updateExternalButtons() {
+        boolean hasVlc = isPackageInstalled(VLC_PACKAGE);
+        String text = hasVlc ? "Reproducir con VLC · recomendado" : "Instalar VLC compatible · recomendado";
+        externalPrimary.setText(text);
+        errorExternal.setText(hasVlc ? "Abrir con VLC" : "Instalar VLC");
     }
 
     private void startNativePlayback() {
         prepared = false;
+        cancelProbe();
+        releaseNativePlayer();
         gatePanel.setVisibility(View.GONE);
         errorPanel.setVisibility(View.GONE);
+        overlay.setVisibility(View.GONE);
         loading.setVisibility(View.VISIBLE);
-        ensureVideoView();
-        showOverlay();
 
-        if (url == null || url.trim().length() == 0) {
+        if (originalUrl == null || originalUrl.trim().length() == 0) {
             showError("URL de canal vacía.");
             return;
         }
 
-        DiagnosticStore.savePlayerLog(this, name, url, "Inicio VideoView / MediaPlayer nativo bajo demanda");
+        DiagnosticStore.savePlayerLog(this, name, originalUrl,
+                "PROBE inicio | headers=" + headers.keySet());
+        probeThread = new Thread(new Runnable() {
+            @Override public void run() {
+                final StreamProbe.Result result = StreamProbe.resolve(originalUrl, headers);
+                if (Thread.currentThread().isInterrupted() || isFinishing()) return;
+                runOnUiThread(new Runnable() {
+                    @Override public void run() {
+                        if (isFinishing()) return;
+                        if (!result.ok) {
+                            DiagnosticStore.savePlayerLog(CompatPlayerActivity.this, name, originalUrl,
+                                    "PROBE ERROR | " + result.detail);
+                            showError("La señal no respondió correctamente antes de abrir el player.\n\n"
+                                    + result.detail
+                                    + "\n\nPrueba otra fuente o usa VLC.");
+                            return;
+                        }
+                        resolvedUrl = result.url;
+                        DiagnosticStore.savePlayerLog(CompatPlayerActivity.this, name, resolvedUrl,
+                                "PROBE OK | " + result.detail);
+                        startNativeResolved(result);
+                    }
+                });
+            }
+        }, "stream-probe");
+        probeThread.start();
+    }
+
+    private void startNativeResolved(StreamProbe.Result result) {
+        prepared = false;
+        errorPanel.setVisibility(View.GONE);
+        loading.setVisibility(View.VISIBLE);
+        ensureVideoView();
+        showOverlay();
+        updateGateInfo(result.detail);
+
         try {
             videoView.stopPlayback();
             if (android.os.Build.VERSION.SDK_INT >= 21 && !headers.isEmpty()) {
-                videoView.setVideoURI(Uri.parse(url), headers);
+                videoView.setVideoURI(Uri.parse(resolvedUrl), headers);
             } else {
-                videoView.setVideoURI(Uri.parse(url));
+                videoView.setVideoURI(Uri.parse(resolvedUrl));
             }
             videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                 @Override public void onPrepared(final MediaPlayer mp) {
@@ -157,7 +219,7 @@ public class CompatPlayerActivity extends Activity {
                             }
                         });
                     } catch (Throwable ignored) {}
-                    DiagnosticStore.savePlayerLog(CompatPlayerActivity.this, name, url,
+                    DiagnosticStore.savePlayerLog(CompatPlayerActivity.this, name, resolvedUrl,
                             "PREPARED native | video=" + mp.getVideoWidth() + "x" + mp.getVideoHeight());
                     videoView.start();
                     showOverlay();
@@ -166,17 +228,24 @@ public class CompatPlayerActivity extends Activity {
             videoView.setOnErrorListener(new MediaPlayer.OnErrorListener() {
                 @Override public boolean onError(MediaPlayer mp, int what, int extra) {
                     loading.setVisibility(View.GONE);
-                    DiagnosticStore.savePlayerLog(CompatPlayerActivity.this, name, url,
+                    DiagnosticStore.savePlayerLog(CompatPlayerActivity.this, name, resolvedUrl,
                             "ERROR MediaPlayer nativo | what=" + what + " extra=" + extra);
-                    showError("El reproductor nativo del MX10 no pudo abrir esta señal.\nCódigo: "
-                            + what + " / " + extra
-                            + "\n\nUsa 'Abrir externo' con VLC/MX Player o prueba otra fuente.");
+                    if (what == MediaPlayer.MEDIA_ERROR_UNKNOWN && extra == Integer.MIN_VALUE) {
+                        showError("El firmware Rockchip devolvió un error de sistema de bajo nivel.\n"
+                                + "Código: 1 / -2147483648\n\n"
+                                + "La URL respondió, pero MediaPlayer del MX10 no pudo decodificarla. "
+                                + "Usa VLC o prueba otra fuente/calidad.");
+                    } else {
+                        showError("El reproductor nativo del MX10 no pudo abrir esta señal.\nCódigo: "
+                                + what + " / " + extra
+                                + "\n\nPrueba VLC o cambia de fuente.");
+                    }
                     return true;
                 }
             });
             videoView.start();
         } catch (Throwable t) {
-            DiagnosticStore.savePlayerLog(this, name, url,
+            DiagnosticStore.savePlayerLog(this, name, resolvedUrl,
                     "EXCEPCION VideoView | " + t.getClass().getName() + ": " + safe(t.getMessage()));
             showError("Error al iniciar el motor nativo: " + t.getClass().getSimpleName());
         }
@@ -203,23 +272,47 @@ public class CompatPlayerActivity extends Activity {
         });
     }
 
-    private void openExternal() {
-        if (url == null || url.trim().length() == 0) return;
-        DiagnosticStore.savePlayerLog(this, name, url, "Intent ACTION_VIEW externo solicitado");
+    private void openVlcOrInstall() {
+        if (isPackageInstalled(VLC_PACKAGE)) {
+            openWithPackage(VLC_PACKAGE);
+        } else {
+            try {
+                Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(VLC_DOWNLOAD_PAGE));
+                startActivity(i);
+            } catch (Throwable t) {
+                Toast.makeText(this, "No se pudo abrir la página oficial de VLC.", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    private void openWithPackage(String packageName) {
+        String u = resolvedUrl == null ? originalUrl : resolvedUrl;
+        if (u == null || u.trim().length() == 0) return;
+        DiagnosticStore.savePlayerLog(this, name, u, "Intent externo paquete=" + packageName);
         try {
             Intent i = new Intent(Intent.ACTION_VIEW);
-            i.setDataAndType(Uri.parse(url), guessMime(url));
+            i.setDataAndType(Uri.parse(u), guessMime(u));
+            i.setPackage(packageName);
+            i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(i);
+        } catch (Throwable t) {
+            openExternalChooser();
+        }
+    }
+
+    private void openExternalChooser() {
+        String u = resolvedUrl == null ? originalUrl : resolvedUrl;
+        if (u == null || u.trim().length() == 0) return;
+        DiagnosticStore.savePlayerLog(this, name, u, "Intent ACTION_VIEW chooser solicitado");
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW);
+            i.setDataAndType(Uri.parse(u), guessMime(u));
             i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(Intent.createChooser(i, "Abrir canal con"));
         } catch (ActivityNotFoundException e) {
-            try {
-                Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                startActivity(i);
-            } catch (Throwable t) {
-                Toast.makeText(this,
-                        "No hay reproductor externo. Instala VLC o MX Player en el stick.",
-                        Toast.LENGTH_LONG).show();
-            }
+            Toast.makeText(this,
+                    "No hay reproductor externo. Instala VLC para Android ARMv7.",
+                    Toast.LENGTH_LONG).show();
         } catch (Throwable t) {
             Toast.makeText(this,
                     "No se pudo abrir externamente: " + t.getClass().getSimpleName(),
@@ -227,18 +320,14 @@ public class CompatPlayerActivity extends Activity {
         }
     }
 
-    private void openBrowser() {
-        if (url == null || url.trim().length() == 0) return;
+    private boolean isPackageInstalled(String packageName) {
         try {
-            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            if (!headers.isEmpty()) {
-                Bundle extraHeaders = new Bundle();
-                for (Map.Entry<String, String> e : headers.entrySet()) extraHeaders.putString(e.getKey(), e.getValue());
-                i.putExtra(Browser.EXTRA_HEADERS, extraHeaders);
-            }
-            startActivity(i);
+            getPackageManager().getPackageInfo(packageName, 0);
+            return true;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
         } catch (Throwable t) {
-            Toast.makeText(this, "No se pudo abrir el enlace.", Toast.LENGTH_LONG).show();
+            return false;
         }
     }
 
@@ -251,6 +340,7 @@ public class CompatPlayerActivity extends Activity {
 
     private void showError(String message) {
         loading.setVisibility(View.GONE);
+        updateExternalButtons();
         errorText.setText(message);
         errorPanel.setVisibility(View.VISIBLE);
         overlay.setVisibility(View.VISIBLE);
@@ -262,6 +352,24 @@ public class CompatPlayerActivity extends Activity {
         handler.removeCallbacks(hideOverlay);
         overlay.setVisibility(View.VISIBLE);
         handler.postDelayed(hideOverlay, OVERLAY_TIMEOUT);
+    }
+
+    private void cancelProbe() {
+        if (probeThread != null) {
+            try { probeThread.interrupt(); } catch (Throwable ignored) {}
+            probeThread = null;
+        }
+    }
+
+    private void releaseNativePlayer() {
+        prepared = false;
+        if (videoView != null) {
+            try { videoView.setOnPreparedListener(null); } catch (Throwable ignored) {}
+            try { videoView.setOnErrorListener(null); } catch (Throwable ignored) {}
+            try { videoView.stopPlayback(); } catch (Throwable ignored) {}
+            try { playerRoot.removeView(videoView); } catch (Throwable ignored) {}
+            videoView = null;
+        }
     }
 
     private void enterImmersiveLegacy() {
@@ -288,16 +396,15 @@ public class CompatPlayerActivity extends Activity {
 
     @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-            if (gatePanel.getVisibility() != View.VISIBLE && videoView != null) {
-                try { videoView.stopPlayback(); } catch (Throwable ignored) {}
-                playerRoot.removeView(videoView);
-                videoView = null;
-                prepared = false;
+            if (gatePanel.getVisibility() != View.VISIBLE && (videoView != null || errorPanel.getVisibility() == View.VISIBLE)) {
+                cancelProbe();
+                releaseNativePlayer();
                 loading.setVisibility(View.GONE);
                 overlay.setVisibility(View.GONE);
                 errorPanel.setVisibility(View.GONE);
                 gatePanel.setVisibility(View.VISIBLE);
-                findViewById(R.id.btnCompatExternalPrimary).requestFocus();
+                updateExternalButtons();
+                externalPrimary.requestFocus();
                 return true;
             }
             finish();
@@ -315,10 +422,16 @@ public class CompatPlayerActivity extends Activity {
 
     @Override protected void onStop() {
         handler.removeCallbacksAndMessages(null);
-        if (videoView != null) {
-            try { videoView.stopPlayback(); } catch (Throwable ignored) {}
-        }
+        cancelProbe();
+        releaseNativePlayer();
         super.onStop();
+    }
+
+    @Override protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
+        cancelProbe();
+        releaseNativePlayer();
+        super.onDestroy();
     }
 
     @Override public void onWindowFocusChanged(boolean hasFocus) {

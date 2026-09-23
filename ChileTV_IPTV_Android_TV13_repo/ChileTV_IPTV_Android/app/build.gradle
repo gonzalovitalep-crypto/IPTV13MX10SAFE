@@ -10,8 +10,8 @@ android {
         applicationId 'cl.chiletv.app.safe'
         minSdk 21
         targetSdk 25
-        versionCode 8
-        versionName '1.5.0-mx10-regiones'
+        versionCode 9
+        versionName '1.6.0-mx10-memory-player'
     }
 
     buildTypes {

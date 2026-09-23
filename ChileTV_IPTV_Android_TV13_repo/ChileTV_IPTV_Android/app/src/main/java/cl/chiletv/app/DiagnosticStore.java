@@ -13,6 +13,7 @@ import android.os.Build;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
@@ -33,6 +34,9 @@ public final class DiagnosticStore {
             String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(new Date());
             String value = now + "\nCanal: " + safe(channel) + "\nURL: " + safe(url) + "\n" + safe(message);
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_PLAYER, value).apply();
+            File file = new File(context.getFilesDir(), "last_player.txt");
+            FileOutputStream out = new FileOutputStream(file, false);
+            try { out.write(value.getBytes(StandardCharsets.UTF_8)); } finally { try { out.close(); } catch (Throwable ignored) {} }
         } catch (Throwable ignored) {}
     }
 
@@ -41,6 +45,8 @@ public final class DiagnosticStore {
         try {
             File crash = new File(context.getFilesDir(), "last_crash.txt");
             if (crash.exists()) crash.delete();
+            File player = new File(context.getFilesDir(), "last_player.txt");
+            if (player.exists()) player.delete();
         } catch (Throwable ignored) {}
     }
 
@@ -63,6 +69,8 @@ public final class DiagnosticStore {
         out.append("ABIs: ").append(abis()).append('\n');
         out.append("Red: ").append(networkSummary(context)).append('\n');
         out.append("Memoria app: ").append(memoryClass(context)).append(" MB\n");
+        out.append("Heap Java: ").append(heapSummary()).append("\n");
+        out.append("Caché app: ").append(cacheSummary(context)).append("\n");
         out.append("Decodificadores: ").append(codecSummary()).append("\n\n");
 
         out.append("--- ULTIMAS SALIDAS DEL PROCESO ---\n");
@@ -70,7 +78,11 @@ public final class DiagnosticStore {
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         out.append("--- ULTIMO EVENTO DEL PLAYER ---\n");
-        out.append(prefs.getString(KEY_PLAYER, "Sin eventos guardados.")).append("\n\n");
+        String playerFile = readFile(new File(context.getFilesDir(), "last_player.txt"), "");
+        if (playerFile == null || playerFile.trim().isEmpty()) {
+            playerFile = prefs.getString(KEY_PLAYER, "Sin eventos guardados.");
+        }
+        out.append(playerFile).append("\n\n");
 
         out.append("--- ULTIMO CRASH JAVA ---\n");
         out.append(readFile(new File(context.getFilesDir(), "last_crash.txt"), "Sin crash Java guardado."));
@@ -140,6 +152,33 @@ public final class DiagnosticStore {
         } catch (Throwable t) {
             return "desconocida";
         }
+    }
+
+    private static String heapSummary() {
+        try {
+            Runtime rt = Runtime.getRuntime();
+            long used = rt.totalMemory() - rt.freeMemory();
+            return (used / (1024 * 1024)) + " MB usados / "
+                    + (rt.maxMemory() / (1024 * 1024)) + " MB máx.";
+        } catch (Throwable t) { return "no disponible"; }
+    }
+
+    private static String cacheSummary(Context context) {
+        try {
+            long bytes = dirSize(context.getCacheDir());
+            return (bytes / 1024) + " KB";
+        } catch (Throwable t) { return "no disponible"; }
+    }
+
+    private static long dirSize(File dir) {
+        if (dir == null || !dir.exists()) return 0L;
+        File[] files = dir.listFiles();
+        if (files == null) return 0L;
+        long total = 0L;
+        for (File f : files) {
+            if (f.isDirectory()) total += dirSize(f); else total += f.length();
+        }
+        return total;
     }
 
     private static int memoryClass(Context context) {

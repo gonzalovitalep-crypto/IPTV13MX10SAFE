@@ -18,7 +18,7 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
 
-        <activity android:name="cl.chiletv.app.CompatPlayerActivity" android:exported="false" android:screenOrientation="landscape" />
+        <activity android:name="cl.chiletv.app.CompatPlayerActivity" android:exported="false" android:screenOrientation="landscape" android:process=":player" android:excludeFromRecents="true" />
         <activity android:name="cl.chiletv.app.CompatMainActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name="cl.chiletv.app.DiagnosticsActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name="cl.chiletv.app.OfficialWebActivity" android:exported="false" android:screenOrientation="landscape" />

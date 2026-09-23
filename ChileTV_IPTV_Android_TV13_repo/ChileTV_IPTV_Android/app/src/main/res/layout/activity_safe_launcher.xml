@@ -10,7 +10,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="TV Hispana · MX10 ULTRA SAFE"
+        android:text="TV Hispana · MX10 MEMORY SAFE"
         android:textColor="@color/textPrimary"
         android:textSize="30sp"
         android:textStyle="bold" />
@@ -19,7 +19,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Versión API 25 sin AndroidX ni ExoPlayer. No inicializa ningún decodificador al abrir. Para canales, prioriza reproductor externo."
+        android:text="Versión API 25 optimizada para 128 MB. Catálogo paginado, caché en disco y player aislado en otro proceso. El motor interno comprueba la señal antes de decodificar."
         android:textColor="@color/textSecondary"
         android:textSize="15sp"
         android:gravity="center" />

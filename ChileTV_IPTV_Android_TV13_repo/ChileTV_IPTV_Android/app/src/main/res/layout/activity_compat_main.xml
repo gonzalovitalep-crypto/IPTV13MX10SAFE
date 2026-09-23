@@ -21,7 +21,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="TV Hispana · MX10 Ultra Safe"
+                android:text="TV Hispana · MX10 Memory Safe"
                 android:textColor="@color/textPrimary"
                 android:textSize="25sp"
                 android:textStyle="bold" />
@@ -192,6 +192,42 @@
                 android:text="Cargando…"
                 android:textColor="@color/textSecondary"
                 android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnCompatPrevPage"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_button_dark"
+                android:focusable="true"
+                android:text="◀"
+                android:textColor="@color/textPrimary" />
+
+            <TextView
+                android:id="@+id/compatPageText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Página 1/1"
+                android:textColor="@color/textSecondary"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/btnCompatNextPage"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_button_dark"
+                android:focusable="true"
+                android:text="▶"
+                android:textColor="@color/textPrimary" />
         </LinearLayout>
 
         <GridView
