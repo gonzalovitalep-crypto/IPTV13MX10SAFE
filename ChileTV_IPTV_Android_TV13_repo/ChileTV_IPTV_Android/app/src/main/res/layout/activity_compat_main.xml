@@ -17,17 +17,19 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical">
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Chile TV IPTV · MX10 Ultra Safe"
+                android:text="TV Hispana · MX10 Ultra Safe"
                 android:textColor="@color/textPrimary"
                 android:textSize="25sp"
                 android:textStyle="bold" />
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="API 25 · múltiples fuentes · reproductor nativo/externo · control remoto reforzado"
+                android:text="Chile · Latinoamérica · España/Europa · EE.UU. hispano"
                 android:textColor="@color/textSecondary"
                 android:textSize="12sp" />
         </LinearLayout>
@@ -43,113 +45,189 @@
             android:textColor="@color/textPrimary" />
     </LinearLayout>
 
-    <EditText
-        android:id="@+id/compatSearchInput"
+    <GridView
+        android:id="@+id/compatCatalogGrid"
         android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:layout_marginTop="12dp"
-        android:background="@drawable/bg_search"
-        android:hint="Buscar canal…"
-        android:paddingLeft="15dp"
-        android:paddingRight="15dp"
-        android:singleLine="true"
-        android:textColor="@color/textPrimary"
-        android:textColorHint="#7B8792" />
+        android:layout_height="0dp"
+        android:layout_marginTop="16dp"
+        android:layout_weight="1"
+        android:columnWidth="220dp"
+        android:gravity="center"
+        android:horizontalSpacing="12dp"
+        android:numColumns="auto_fit"
+        android:stretchMode="columnWidth"
+        android:verticalSpacing="12dp"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
 
-    <HorizontalScrollView
+    <LinearLayout
+        android:id="@+id/compatChannelArea"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:scrollbars="none">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="gone">
+
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
+
             <Button
-                android:id="@+id/btnCompatSource"
+                android:id="@+id/btnCompatBackRegions"
                 android:layout_width="wrap_content"
                 android:layout_height="44dp"
-                android:background="@drawable/bg_button"
-                android:text="Fuente: Verificados"
-                android:textAllCaps="false"
-                android:textColor="#111111" />
-            <Button
-                android:id="@+id/btnCompatNationals"
-                android:layout_width="wrap_content"
-                android:layout_height="44dp"
-                android:layout_marginLeft="8dp"
                 android:background="@drawable/bg_button_dark"
-                android:text="Nacionales: sí"
+                android:text="Regiones"
                 android:textAllCaps="false"
                 android:textColor="@color/textPrimary" />
-            <Button
-                android:id="@+id/btnCompatRefresh"
-                android:layout_width="wrap_content"
-                android:layout_height="44dp"
-                android:layout_marginLeft="8dp"
-                android:background="@drawable/bg_button_dark"
-                android:text="Actualizar"
-                android:textAllCaps="false"
-                android:textColor="@color/textPrimary" />
-            <Button
-                android:id="@+id/btnCompatFavorites"
-                android:layout_width="wrap_content"
-                android:layout_height="44dp"
-                android:layout_marginLeft="8dp"
-                android:background="@drawable/bg_button_dark"
-                android:text="☆ Favoritos"
-                android:textAllCaps="false"
-                android:textColor="@color/textPrimary" />
-            <Button
-                android:id="@+id/btnCompatWeb"
-                android:layout_width="wrap_content"
-                android:layout_height="44dp"
-                android:layout_marginLeft="8dp"
-                android:background="@drawable/bg_button_dark"
-                android:text="Web oficial"
-                android:textAllCaps="false"
-                android:textColor="@color/textPrimary" />
-            <Button
-                android:id="@+id/btnCompatDiagnostics"
-                android:layout_width="wrap_content"
-                android:layout_height="44dp"
-                android:layout_marginLeft="8dp"
-                android:background="@drawable/bg_button_dark"
-                android:text="Diagnóstico"
-                android:textAllCaps="false"
-                android:textColor="@color/textPrimary" />
+
+            <TextView
+                android:id="@+id/compatSectionTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="12dp"
+                android:layout_weight="1"
+                android:text="Chile"
+                android:textColor="@color/textPrimary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
         </LinearLayout>
-    </HorizontalScrollView>
+
+        <EditText
+            android:id="@+id/compatSearchInput"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_search"
+            android:hint="Buscar canal, país o categoría…"
+            android:paddingLeft="15dp"
+            android:paddingRight="15dp"
+            android:singleLine="true"
+            android:textColor="@color/textPrimary"
+            android:textColorHint="#7B8792" />
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnCompatSource"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:background="@drawable/bg_button"
+                    android:text="Fuente"
+                    android:textAllCaps="false"
+                    android:textColor="#111111" />
+
+                <Button
+                    android:id="@+id/btnCompatRefresh"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:layout_marginLeft="8dp"
+                    android:background="@drawable/bg_button_dark"
+                    android:text="Actualizar"
+                    android:textAllCaps="false"
+                    android:textColor="@color/textPrimary" />
+
+                <Button
+                    android:id="@+id/btnCompatFavorites"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:layout_marginLeft="8dp"
+                    android:background="@drawable/bg_button_dark"
+                    android:text="☆ Favoritos"
+                    android:textAllCaps="false"
+                    android:textColor="@color/textPrimary" />
+
+                <Button
+                    android:id="@+id/btnCompatWeb"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:layout_marginLeft="8dp"
+                    android:background="@drawable/bg_button_dark"
+                    android:text="Web oficial"
+                    android:textAllCaps="false"
+                    android:textColor="@color/textPrimary" />
+
+                <Button
+                    android:id="@+id/btnCompatDiagnostics"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:layout_marginLeft="8dp"
+                    android:background="@drawable/bg_button_dark"
+                    android:text="Diagnóstico"
+                    android:textAllCaps="false"
+                    android:textColor="@color/textPrimary" />
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="7dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ProgressBar
+                android:id="@+id/compatLoadingBar"
+                android:layout_width="22dp"
+                android:layout_height="22dp" />
+
+            <TextView
+                android:id="@+id/compatStatusText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="10dp"
+                android:layout_weight="1"
+                android:text="Cargando…"
+                android:textColor="@color/textSecondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <GridView
+            android:id="@+id/compatChannelGrid"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_weight="1"
+            android:columnWidth="170dp"
+            android:gravity="center"
+            android:horizontalSpacing="8dp"
+            android:numColumns="auto_fit"
+            android:stretchMode="columnWidth"
+            android:verticalSpacing="8dp"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="7dp"
+        android:layout_marginTop="6dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
+
         <ProgressBar
-            android:id="@+id/compatLoadingBar"
-            android:layout_width="22dp"
-            android:layout_height="22dp" />
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:visibility="gone" />
+
         <TextView
-            android:id="@+id/compatStatusText"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="10dp"
             android:layout_weight="1"
-            android:text="Cargando…"
-            android:textColor="@color/textSecondary"
-            android:textSize="12sp" />
+            android:text="OK abre · mantener OK agrega favorito · Atrás vuelve a regiones"
+            android:textColor="#6F7B86"
+            android:textSize="10sp" />
     </LinearLayout>
-
-    <ListView
-        android:id="@+id/compatChannelList"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="8dp"
-        android:layout_weight="1"
-        android:divider="@android:color/transparent"
-        android:dividerHeight="6dp"
-        android:focusable="true"
-        android:focusableInTouchMode="true" />
 </LinearLayout>

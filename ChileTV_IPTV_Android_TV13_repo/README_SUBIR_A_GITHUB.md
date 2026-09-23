@@ -1,12 +1,17 @@
-# Chile TV IPTV MX10 Ultra Safe v5.2
+# TV Hispana MX10 · v5.3 regiones
 
-Sube el contenido de este ZIP a la raiz de tu repositorio GitHub.
+Sube el contenido de este ZIP a la raíz de tu repositorio GitHub, reemplazando los archivos existentes.
 
-La correccion principal de v5.2 refuerza la seleccion con control remoto en firmware Rockchip/API 25:
-- clic directo sobre cada fila;
-- DPAD_CENTER / ENTER / NUMPAD_ENTER / MEDIA_PLAY_PAUSE;
-- respaldo adicional en el ListView;
-- registro en Diagnostico del evento que intento abrir el canal;
-- mensaje visual "Abriendo..." al recibir correctamente el OK.
+La v5.3 conserva la base Ultra Safe que funciona en el MX10/API 25 y cambia la navegación:
 
-GitHub Actions genera el artefacto `ChileTV-IPTV-MX10-ULTRA-SAFE-v5-2`.
+1. **Chile**
+2. **Latinoamérica**
+3. **España / Europa**
+4. **EE.UU. Hispano**
+5. **Todo en español**
+
+Al entrar a una región, los canales aparecen como fichas compactas distribuidas automáticamente en columnas y filas. El botón **Fuente** permite alternar entre proveedores públicos compatibles con esa región.
+
+GitHub Actions genera el artefacto:
+
+`TV-Hispana-MX10-v5-3`

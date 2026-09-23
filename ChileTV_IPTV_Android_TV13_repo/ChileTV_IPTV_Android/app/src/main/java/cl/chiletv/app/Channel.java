@@ -9,14 +9,19 @@ public class Channel {
     private final String name;
     private final String logo;
     private final String group;
+    private final String country;
+    private final String language;
     private final String url;
     private final Map<String, String> headers;
 
-    public Channel(String id, String name, String logo, String group, String url, Map<String, String> headers) {
+    public Channel(String id, String name, String logo, String group, String country,
+                   String language, String url, Map<String, String> headers) {
         this.id = value(id);
         this.name = value(name).isEmpty() ? "Canal sin nombre" : value(name);
         this.logo = value(logo);
-        this.group = value(group).isEmpty() ? "Chile" : value(group);
+        this.group = value(group).isEmpty() ? "TV" : value(group);
+        this.country = value(country);
+        this.language = value(language);
         this.url = value(url);
         this.headers = Collections.unmodifiableMap(new HashMap<>(headers == null ? Collections.emptyMap() : headers));
     }
@@ -29,6 +34,8 @@ public class Channel {
     public String getName() { return name; }
     public String getLogo() { return logo; }
     public String getGroup() { return group; }
+    public String getCountry() { return country; }
+    public String getLanguage() { return language; }
     public String getUrl() { return url; }
     public Map<String, String> getHeaders() { return headers; }
 

@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -13,8 +14,8 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.GridView;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -27,19 +28,26 @@ import java.util.Map;
 public class CompatMainActivity extends Activity {
     private final List<Channel> allChannels = new ArrayList<>();
     private final List<Channel> visibleChannels = new ArrayList<>();
+
     private ChannelRepository repository;
     private FavoritesStore favorites;
-    private CompatAdapter adapter;
-    private ListView listView;
+    private CatalogAdapter catalogAdapter;
+    private ChannelGridAdapter channelAdapter;
+
+    private GridView catalogGrid;
+    private GridView channelGrid;
+    private LinearLayout channelArea;
     private EditText searchInput;
     private TextView statusText;
+    private TextView sectionTitle;
     private ProgressBar loadingBar;
     private Button favoriteFilter;
     private Button sourceButton;
-    private Button nationalFilter;
+    private Button backRegions;
+
     private boolean onlyFavorites = false;
-    private boolean onlyNationals = true;
-    private ChannelRepository.Source currentSource = ChannelRepository.Source.VERIFIED;
+    private ChannelRepository.Catalog currentCatalog = null;
+    private ChannelRepository.Source currentSource = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,49 +56,59 @@ public class CompatMainActivity extends Activity {
 
         repository = new ChannelRepository(this);
         favorites = new FavoritesStore(this);
-        listView = findViewById(R.id.compatChannelList);
+
+        catalogGrid = findViewById(R.id.compatCatalogGrid);
+        channelGrid = findViewById(R.id.compatChannelGrid);
+        channelArea = findViewById(R.id.compatChannelArea);
         searchInput = findViewById(R.id.compatSearchInput);
         statusText = findViewById(R.id.compatStatusText);
+        sectionTitle = findViewById(R.id.compatSectionTitle);
         loadingBar = findViewById(R.id.compatLoadingBar);
         favoriteFilter = findViewById(R.id.btnCompatFavorites);
         sourceButton = findViewById(R.id.btnCompatSource);
-        nationalFilter = findViewById(R.id.btnCompatNationals);
+        backRegions = findViewById(R.id.btnCompatBackRegions);
         Button refresh = findViewById(R.id.btnCompatRefresh);
         Button diagnostics = findViewById(R.id.btnCompatDiagnostics);
         Button web = findViewById(R.id.btnCompatWeb);
         Button home = findViewById(R.id.btnCompatHome);
 
-        adapter = new CompatAdapter();
-        listView.setAdapter(adapter);
-        listView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-        listView.setItemsCanFocus(true);
+        catalogAdapter = new CatalogAdapter();
+        channelAdapter = new ChannelGridAdapter();
+        catalogGrid.setAdapter(catalogAdapter);
+        channelGrid.setAdapter(channelAdapter);
 
-        // Algunos firmwares Rockchip/API 25 no disparan OnItemClick cuando la fila
-        // obtiene el foco con el control remoto. Mantenemos el listener del ListView
-        // y añadimos manejo explícito de OK/ENTER como respaldo.
-        listView.setOnItemClickListener((parent, view, position, id) -> {
-            if (position >= 0 && position < visibleChannels.size()) {
-                openChannel(visibleChannels.get(position), "list_onItemClick");
-            }
+        catalogGrid.setOnItemClickListener((parent, view, position, id) -> {
+            ChannelRepository.Catalog[] values = ChannelRepository.Catalog.values();
+            if (position >= 0 && position < values.length) openCatalog(values[position]);
         });
-        listView.setOnKeyListener((v, keyCode, event) -> {
-            if (event.getAction() != KeyEvent.ACTION_UP) return false;
-            if (keyCode != KeyEvent.KEYCODE_DPAD_CENTER
-                    && keyCode != KeyEvent.KEYCODE_ENTER
-                    && keyCode != KeyEvent.KEYCODE_NUMPAD_ENTER
-                    && keyCode != KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) return false;
-            int position = listView.getSelectedItemPosition();
-            if (position >= 0 && position < visibleChannels.size()) {
-                openChannel(visibleChannels.get(position), "list_key_" + keyCode);
+        catalogGrid.setOnKeyListener((v, keyCode, event) -> {
+            if (!isAcceptKey(keyCode, event)) return false;
+            int position = catalogGrid.getSelectedItemPosition();
+            ChannelRepository.Catalog[] values = ChannelRepository.Catalog.values();
+            if (position >= 0 && position < values.length) {
+                openCatalog(values[position]);
                 return true;
             }
             return false;
         });
-        listView.setOnItemLongClickListener((parent, view, position, id) -> {
-            Channel c = visibleChannels.get(position);
-            boolean nowFavorite = favorites.toggle(c);
-            Toast.makeText(this, nowFavorite ? "Agregado a favoritos" : "Quitado de favoritos", Toast.LENGTH_SHORT).show();
-            applyFilter();
+
+        channelGrid.setOnItemClickListener((parent, view, position, id) -> {
+            if (position >= 0 && position < visibleChannels.size()) {
+                openChannel(visibleChannels.get(position), "grid_onItemClick");
+            }
+        });
+        channelGrid.setOnKeyListener((v, keyCode, event) -> {
+            if (!isAcceptKey(keyCode, event)) return false;
+            int position = channelGrid.getSelectedItemPosition();
+            if (position >= 0 && position < visibleChannels.size()) {
+                openChannel(visibleChannels.get(position), "grid_key_" + keyCode);
+                return true;
+            }
+            return false;
+        });
+        channelGrid.setOnItemLongClickListener((parent, view, position, id) -> {
+            if (position < 0 || position >= visibleChannels.size()) return false;
+            toggleFavorite(visibleChannels.get(position));
             return true;
         });
 
@@ -100,36 +118,86 @@ public class CompatMainActivity extends Activity {
             @Override public void afterTextChanged(Editable s) {}
         });
 
-        refresh.setOnClickListener(v -> loadChannels());
+        sourceButton.setOnClickListener(v -> {
+            if (currentCatalog == null || currentSource == null) return;
+            currentSource = currentSource.nextFor(currentCatalog);
+            updateSourceButton();
+            loadChannels();
+        });
+        refresh.setOnClickListener(v -> {
+            if (currentSource != null) loadChannels();
+        });
         favoriteFilter.setOnClickListener(v -> {
             onlyFavorites = !onlyFavorites;
             favoriteFilter.setText(onlyFavorites ? "★ Favoritos" : "☆ Favoritos");
             applyFilter();
         });
-        nationalFilter.setOnClickListener(v -> {
-            onlyNationals = !onlyNationals;
-            nationalFilter.setText(onlyNationals ? "Nacionales: sí" : "Nacionales: no");
-            applyFilter();
-        });
-        sourceButton.setOnClickListener(v -> {
-            currentSource = currentSource.next();
-            sourceButton.setText("Fuente: " + currentSource.label);
-            loadChannels();
-        });
+        backRegions.setOnClickListener(v -> showCatalogs());
         diagnostics.setOnClickListener(v -> startActivity(new Intent(this, DiagnosticsActivity.class)));
         web.setOnClickListener(v -> startActivity(new Intent(this, OfficialWebActivity.class)));
         home.setOnClickListener(v -> finish());
 
-        sourceButton.setText("Fuente: " + currentSource.label);
-        nationalFilter.setText("Nacionales: sí");
+        showCatalogs();
+    }
+
+    private boolean isAcceptKey(int keyCode, KeyEvent event) {
+        if (event.getAction() != KeyEvent.ACTION_UP) return false;
+        return keyCode == KeyEvent.KEYCODE_DPAD_CENTER
+                || keyCode == KeyEvent.KEYCODE_ENTER
+                || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER
+                || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE;
+    }
+
+    private void showCatalogs() {
+        currentCatalog = null;
+        currentSource = null;
+        onlyFavorites = false;
+        allChannels.clear();
+        visibleChannels.clear();
+        channelAdapter.notifyDataSetChanged();
+        searchInput.setText("");
         searchInput.clearFocus();
+
+        channelArea.setVisibility(View.GONE);
+        catalogGrid.setVisibility(View.VISIBLE);
+        loadingBar.setVisibility(View.GONE);
+        statusText.setText("Elige una región. Las fichas de canales usan texto compacto para ahorrar memoria en el MX10.");
+        catalogGrid.postDelayed(() -> {
+            try {
+                catalogGrid.setSelection(0);
+                catalogGrid.requestFocus();
+            } catch (Throwable ignored) {}
+        }, 120);
+    }
+
+    private void openCatalog(ChannelRepository.Catalog catalog) {
+        currentCatalog = catalog;
+        currentSource = ChannelRepository.Source.firstFor(catalog);
+        onlyFavorites = false;
+        favoriteFilter.setText("☆ Favoritos");
+        sectionTitle.setText(catalog.label);
+        searchInput.setText("");
+        updateSourceButton();
+
+        catalogGrid.setVisibility(View.GONE);
+        channelArea.setVisibility(View.VISIBLE);
         loadChannels();
     }
 
+    private void updateSourceButton() {
+        sourceButton.setText(currentSource == null ? "Fuente" : "Fuente: " + currentSource.label);
+    }
+
     private void loadChannels() {
+        if (currentSource == null) return;
+        final ChannelRepository.Source requested = currentSource;
         loadingBar.setVisibility(View.VISIBLE);
-        statusText.setText("Cargando " + currentSource.label + "…");
-        repository.load(currentSource, new ChannelRepository.Callback() {
+        statusText.setText("Cargando " + requested.label + "…");
+        allChannels.clear();
+        visibleChannels.clear();
+        channelAdapter.notifyDataSetChanged();
+
+        repository.load(requested, new ChannelRepository.Callback() {
             @Override
             public void onLoaded(List<Channel> channels, boolean fromCache, ChannelRepository.Source source) {
                 if (source != currentSource) return;
@@ -137,8 +205,10 @@ public class CompatMainActivity extends Activity {
                 allChannels.addAll(channels);
                 loadingBar.setVisibility(View.GONE);
                 applyFilter();
-                if (fromCache) Toast.makeText(CompatMainActivity.this,
-                        "Usando caché de " + source.label + ".", Toast.LENGTH_SHORT).show();
+                if (fromCache) {
+                    Toast.makeText(CompatMainActivity.this,
+                            "Usando caché de " + source.label + ".", Toast.LENGTH_SHORT).show();
+                }
             }
 
             @Override
@@ -152,35 +222,36 @@ public class CompatMainActivity extends Activity {
     }
 
     private void applyFilter() {
+        if (currentCatalog == null) return;
         String q = searchInput == null ? "" : searchInput.getText().toString().trim().toLowerCase(Locale.ROOT);
         visibleChannels.clear();
         for (Channel c : allChannels) {
+            String country = ChannelRepository.countryLabel(c).toLowerCase(Locale.ROOT);
             boolean textOk = q.isEmpty()
                     || c.getName().toLowerCase(Locale.ROOT).contains(q)
-                    || c.getGroup().toLowerCase(Locale.ROOT).contains(q);
+                    || c.getGroup().toLowerCase(Locale.ROOT).contains(q)
+                    || country.contains(q);
             boolean favOk = !onlyFavorites || favorites.isFavorite(c);
-            boolean nationalOk = !onlyNationals
-                    || ChannelRepository.isKnownNational(c.getName())
-                    || c.getGroup().toLowerCase(Locale.ROOT).contains("nacional")
-                    || c.getGroup().toLowerCase(Locale.ROOT).contains("noticia");
-            if (textOk && favOk && nationalOk) visibleChannels.add(c);
+            if (textOk && favOk) visibleChannels.add(c);
         }
-        adapter.notifyDataSetChanged();
-        statusText.setText(visibleChannels.size() + " canales · " + currentSource.label
-                + (onlyNationals ? " · nacionales" : "")
+        channelAdapter.notifyDataSetChanged();
+        String sourceLabel = currentSource == null ? "" : currentSource.label;
+        statusText.setText(visibleChannels.size() + " canales · " + sourceLabel
                 + (onlyFavorites ? " · favoritos" : ""));
         if (!visibleChannels.isEmpty()) {
-            listView.postDelayed(() -> {
+            channelGrid.postDelayed(() -> {
                 try {
-                    listView.setSelection(0);
-                    listView.requestFocus();
+                    channelGrid.setSelection(0);
+                    channelGrid.requestFocus();
                 } catch (Throwable ignored) {}
             }, 150);
         }
     }
 
-    private void openChannel(Channel channel) {
-        openChannel(channel, "direct");
+    private void toggleFavorite(Channel channel) {
+        boolean nowFavorite = favorites.toggle(channel);
+        Toast.makeText(this, nowFavorite ? "Agregado a favoritos" : "Quitado de favoritos", Toast.LENGTH_SHORT).show();
+        applyFilter();
     }
 
     private void openChannel(Channel channel, String trigger) {
@@ -196,15 +267,17 @@ public class CompatMainActivity extends Activity {
             return;
         }
 
+        String sourceName = currentSource == null ? "desconocida" : currentSource.label;
         DiagnosticStore.savePlayerLog(this, channel.getName(), channelUrl,
-                "SELECCION canal | trigger=" + trigger + " | fuente=" + currentSource.label);
+                "SELECCION canal | trigger=" + trigger + " | fuente=" + sourceName
+                        + " | region=" + (currentCatalog == null ? "" : currentCatalog.label));
         Toast.makeText(this, "Abriendo " + channel.getName() + "…", Toast.LENGTH_SHORT).show();
 
         try {
             Intent i = new Intent(this, CompatPlayerActivity.class);
             i.putExtra("name", channel.getName());
             i.putExtra("url", channelUrl);
-            i.putExtra("source", currentSource.label);
+            i.putExtra("source", sourceName);
             Bundle headers = new Bundle();
             for (Map.Entry<String, String> e : channel.getHeaders().entrySet()) {
                 headers.putString(e.getKey(), e.getValue());
@@ -219,99 +292,176 @@ public class CompatMainActivity extends Activity {
     }
 
     @Override
+    public void onBackPressed() {
+        if (currentCatalog != null) {
+            showCatalogs();
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         if (repository != null) repository.shutdown();
         super.onDestroy();
     }
 
-    private final class CompatAdapter extends BaseAdapter {
+    private final class CatalogAdapter extends BaseAdapter {
+        private final ChannelRepository.Catalog[] catalogs = ChannelRepository.Catalog.values();
+        @Override public int getCount() { return catalogs.length; }
+        @Override public Object getItem(int position) { return catalogs[position]; }
+        @Override public long getItemId(int position) { return position; }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            CatalogHolder holder;
+            if (convertView == null) {
+                LinearLayout card = new LinearLayout(CompatMainActivity.this);
+                card.setOrientation(LinearLayout.VERTICAL);
+                card.setGravity(Gravity.CENTER_VERTICAL);
+                card.setPadding(dp(20), dp(16), dp(20), dp(16));
+                card.setMinimumHeight(dp(104));
+                card.setBackgroundResource(R.drawable.bg_category);
+                card.setFocusable(true);
+                card.setFocusableInTouchMode(true);
+                card.setClickable(true);
+
+                TextView title = new TextView(CompatMainActivity.this);
+                title.setTextColor(Color.WHITE);
+                title.setTextSize(21);
+                title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+                title.setSingleLine(true);
+
+                TextView subtitle = new TextView(CompatMainActivity.this);
+                subtitle.setTextColor(Color.rgb(190, 198, 206));
+                subtitle.setTextSize(12);
+                subtitle.setMaxLines(2);
+                subtitle.setEllipsize(TextUtils.TruncateAt.END);
+                subtitle.setPadding(0, dp(5), 0, 0);
+
+                card.addView(title);
+                card.addView(subtitle);
+                holder = new CatalogHolder(title, subtitle);
+                card.setTag(holder);
+                convertView = card;
+            } else {
+                holder = (CatalogHolder) convertView.getTag();
+            }
+
+            final ChannelRepository.Catalog catalog = catalogs[position];
+            holder.title.setText(catalog.label);
+            holder.subtitle.setText(catalog.description);
+            convertView.setOnClickListener(v -> openCatalog(catalog));
+            convertView.setOnKeyListener((v, keyCode, event) -> {
+                if (isAcceptKey(keyCode, event)) {
+                    openCatalog(catalog);
+                    return true;
+                }
+                return false;
+            });
+            return convertView;
+        }
+    }
+
+    private final class ChannelGridAdapter extends BaseAdapter {
         @Override public int getCount() { return visibleChannels.size(); }
         @Override public Object getItem(int position) { return visibleChannels.get(position); }
         @Override public long getItemId(int position) { return position; }
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            Holder holder;
+            ChannelHolder holder;
             if (convertView == null) {
-                LinearLayout row = new LinearLayout(CompatMainActivity.this);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setPadding(dp(18), dp(12), dp(18), dp(12));
-                row.setMinimumHeight(dp(66));
-                row.setBackgroundResource(R.drawable.bg_channel);
-                row.setFocusable(true);
-                row.setFocusableInTouchMode(true);
-                row.setClickable(true);
-                row.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+                LinearLayout card = new LinearLayout(CompatMainActivity.this);
+                card.setOrientation(LinearLayout.VERTICAL);
+                card.setGravity(Gravity.CENTER_VERTICAL);
+                card.setPadding(dp(12), dp(10), dp(12), dp(10));
+                card.setMinimumHeight(dp(82));
+                card.setBackgroundResource(R.drawable.bg_channel);
+                card.setFocusable(true);
+                card.setFocusableInTouchMode(true);
+                card.setClickable(true);
+                card.setLongClickable(true);
+                card.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
 
-                LinearLayout textBox = new LinearLayout(CompatMainActivity.this);
-                textBox.setOrientation(LinearLayout.VERTICAL);
-                textBox.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+                LinearLayout top = new LinearLayout(CompatMainActivity.this);
+                top.setOrientation(LinearLayout.HORIZONTAL);
+                top.setGravity(Gravity.CENTER_VERTICAL);
 
                 TextView title = new TextView(CompatMainActivity.this);
                 title.setTextColor(Color.WHITE);
-                title.setTextSize(18);
+                title.setTextSize(15);
+                title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
                 title.setSingleLine(true);
-
-                TextView subtitle = new TextView(CompatMainActivity.this);
-                subtitle.setTextColor(Color.rgb(160, 170, 180));
-                subtitle.setTextSize(12);
-                subtitle.setSingleLine(true);
+                title.setEllipsize(TextUtils.TruncateAt.END);
+                title.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
                 TextView star = new TextView(CompatMainActivity.this);
-                star.setTextColor(Color.rgb(255, 203, 5));
-                star.setTextSize(24);
-                star.setPadding(dp(14), 0, 0, 0);
+                star.setTextColor(Color.rgb(245, 196, 0));
+                star.setTextSize(18);
+                star.setPadding(dp(7), 0, 0, 0);
 
-                textBox.addView(title);
-                textBox.addView(subtitle);
-                row.addView(textBox);
-                row.addView(star);
+                TextView subtitle = new TextView(CompatMainActivity.this);
+                subtitle.setTextColor(Color.rgb(156, 168, 180));
+                subtitle.setTextSize(10);
+                subtitle.setSingleLine(true);
+                subtitle.setEllipsize(TextUtils.TruncateAt.END);
+                subtitle.setPadding(0, dp(5), 0, 0);
 
-                holder = new Holder(title, subtitle, star);
-                row.setTag(holder);
-                convertView = row;
+                top.addView(title);
+                top.addView(star);
+                card.addView(top);
+                card.addView(subtitle);
+
+                holder = new ChannelHolder(title, subtitle, star);
+                card.setTag(holder);
+                convertView = card;
             } else {
-                holder = (Holder) convertView.getTag();
+                holder = (ChannelHolder) convertView.getTag();
             }
 
-            Channel c = visibleChannels.get(position);
+            final Channel c = visibleChannels.get(position);
             holder.title.setText(c.getName());
-            holder.subtitle.setText((c.getGroup().isEmpty() ? "Chile" : c.getGroup()) + " · " + currentSource.label);
+            String country = ChannelRepository.countryLabel(c);
+            String group = c.getGroup();
+            String meta;
+            if (!country.isEmpty() && !group.isEmpty() && !group.equalsIgnoreCase("TV")) meta = country + " · " + group;
+            else if (!country.isEmpty()) meta = country;
+            else meta = group.isEmpty() ? "TV" : group;
+            holder.subtitle.setText(meta);
             holder.star.setText(favorites.isFavorite(c) ? "★" : "☆");
 
-            // Listener directo sobre la fila: corrige boxes Rockchip donde el foco
-            // del elemento consume el OK y el ListView nunca recibe OnItemClick.
             final Channel boundChannel = c;
-            convertView.setOnClickListener(v -> openChannel(boundChannel, "row_click"));
+            convertView.setOnClickListener(v -> openChannel(boundChannel, "card_click"));
             convertView.setOnKeyListener((v, keyCode, event) -> {
-                if (event.getAction() != KeyEvent.ACTION_UP) return false;
-                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER
-                        || keyCode == KeyEvent.KEYCODE_ENTER
-                        || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER
-                        || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) {
-                    openChannel(boundChannel, "row_key_" + keyCode);
+                if (isAcceptKey(keyCode, event)) {
+                    openChannel(boundChannel, "card_key_" + keyCode);
                     return true;
                 }
                 return false;
             });
             convertView.setOnLongClickListener(v -> {
-                boolean nowFavorite = favorites.toggle(boundChannel);
-                Toast.makeText(CompatMainActivity.this,
-                        nowFavorite ? "Agregado a favoritos" : "Quitado de favoritos",
-                        Toast.LENGTH_SHORT).show();
-                applyFilter();
+                toggleFavorite(boundChannel);
                 return true;
             });
             return convertView;
         }
     }
 
-    private static final class Holder {
+    private static final class CatalogHolder {
+        final TextView title;
+        final TextView subtitle;
+        CatalogHolder(TextView title, TextView subtitle) {
+            this.title = title;
+            this.subtitle = subtitle;
+        }
+    }
+
+    private static final class ChannelHolder {
         final TextView title;
         final TextView subtitle;
         final TextView star;
-        Holder(TextView title, TextView subtitle, TextView star) {
+        ChannelHolder(TextView title, TextView subtitle, TextView star) {
             this.title = title;
             this.subtitle = subtitle;
             this.star = star;

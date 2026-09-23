@@ -71,6 +71,8 @@ public final class M3UParser {
                         attrs.containsKey("tvg-name") && !attrs.get("tvg-name").isEmpty() ? attrs.get("tvg-name") : name,
                         attrs.get("tvg-logo"),
                         attrs.get("group-title"),
+                        firstNonEmpty(attrs.get("tvg-country"), attrs.get("country")),
+                        firstNonEmpty(attrs.get("tvg-language"), attrs.get("language")),
                         url,
                         headers
                 ));
@@ -80,6 +82,11 @@ public final class M3UParser {
             pendingHeaders = new HashMap<>();
         }
         return result;
+    }
+
+    private static String firstNonEmpty(String a, String b) {
+        if (a != null && !a.trim().isEmpty()) return a.trim();
+        return b == null ? "" : b.trim();
     }
 
     private static Map<String, String> parseAttrs(String info) {
