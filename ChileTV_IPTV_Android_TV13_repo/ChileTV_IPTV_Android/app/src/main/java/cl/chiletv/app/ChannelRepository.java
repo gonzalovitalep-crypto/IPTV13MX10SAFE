@@ -24,6 +24,7 @@ import java.util.concurrent.Future;
 public class ChannelRepository {
 
     public enum Catalog {
+        NATIONALS("Nacionales", "TV abierta y señales nacionales de Chile"),
         CHILE("Chile", "Canales nacionales, noticias y regionales"),
         LATIN("Latinoamérica", "México, Argentina, Colombia, Perú y más"),
         EUROPE("España / Europa", "Canales españoles y europeos en español"),
@@ -39,9 +40,22 @@ public class ChannelRepository {
         }
     }
 
-    private enum FilterMode { NONE, CHILE, LATIN_SPANISH, EUROPE_SPANISH, USA_HISPANIC }
+    private enum FilterMode { NONE, NATIONALS, CHILE, LATIN_SPANISH, EUROPE_SPANISH, USA_HISPANIC }
 
     public enum Source {
+        NATIONALS_ALPLOX(Catalog.NATIONALS, "Alplox · Nacionales Chile",
+                new String[]{"https://raw.githubusercontent.com/Alplox/json-teles/refs/heads/main/m3u-playlists/cl.m3u"},
+                "v56_nationals_alplox.m3u", FilterMode.NATIONALS),
+        NATIONALS_M3U_CL(Catalog.NATIONALS, "M3U.CL · Nacionales",
+                new String[]{"https://m3u.cl/lista/CL.m3u"},
+                "v56_nationals_m3ucl.m3u", FilterMode.NATIONALS),
+        NATIONALS_IPTV_ORG(Catalog.NATIONALS, "IPTV-org · Nacionales",
+                new String[]{"https://iptv-org.github.io/iptv/countries/cl.m3u"},
+                "v56_nationals_iptvorg.m3u", FilterMode.NATIONALS),
+        NATIONALS_FREE_TV(Catalog.NATIONALS, "Free-TV · Nacionales",
+                new String[]{"https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8"},
+                "v56_nationals_freetv.m3u", FilterMode.NATIONALS),
+
         CHILE_VERIFIED(Catalog.CHILE, "Verificados Chile",
                 new String[]{"https://dearbulut.github.io/iptv/playlists/country/cl.m3u"},
                 "v53_chile_verified.m3u", FilterMode.CHILE),
@@ -121,7 +135,7 @@ public class ChannelRepository {
 
         public static Source firstFor(Catalog catalog) {
             for (Source source : values()) if (source.catalog == catalog) return source;
-            return CHILE_VERIFIED;
+            return NATIONALS_ALPLOX;
         }
 
         public Source nextFor(Catalog catalog) {
@@ -259,6 +273,9 @@ public class ChannelRepository {
     private boolean matchesFilter(Channel channel, FilterMode mode) {
         if (mode == FilterMode.NONE) return true;
         String country = normalizedCountry(channel);
+        if (mode == FilterMode.NATIONALS) {
+            return isKnownNational(channel.getName()) || isKnownNational(channel.getId());
+        }
         if (mode == FilterMode.CHILE) {
             return countryContains(country, "CL") || looksChilean(channel);
         }
@@ -348,13 +365,16 @@ public class ChannelRepository {
                 .replace("á", "a").replace("é", "e").replace("í", "i")
                 .replace("ó", "o").replace("ú", "u").replace("ñ", "n");
         return s.equals("tvn") || s.startsWith("tvn ") || s.contains("tvn3")
-                || s.contains("24 horas") || s.contains("24horas") || s.equals("ntv")
-                || s.contains("tv chile") || s.equals("mega") || s.startsWith("mega ")
+                || s.contains("tvn 3") || s.contains("24 horas") || s.contains("24horas")
+                || s.equals("ntv") || s.startsWith("ntv ") || s.contains("tv chile")
+                || s.equals("mega") || s.startsWith("mega ") || s.contains("mega 2")
                 || s.contains("meganoticias") || s.equals("chv") || s.contains("chilevision")
+                || s.contains("chv noticias") || s.contains("chv deportes")
                 || s.contains("canal 13") || s.startsWith("13 ") || s.equals("13c")
-                || s.contains("t13") || s.contains("la red") || s.equals("tv+")
-                || s.startsWith("tv+ ") || s.contains("cnn chile") || s.contains("telecanal")
-                || s.contains("chv noticias") || s.contains("chv deportes");
+                || s.contains("13 cultura") || s.contains("13 entret") || s.contains("13e")
+                || s.contains("13 internacional") || s.contains("t13")
+                || s.contains("la red") || s.equals("tv+") || s.startsWith("tv+ ")
+                || s.contains("ucv tv") || s.contains("cnn chile") || s.contains("telecanal");
     }
 
     private void downloadAllToFile(String[] sources, File output) throws Exception {

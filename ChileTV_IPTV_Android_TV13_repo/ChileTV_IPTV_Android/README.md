@@ -32,3 +32,13 @@ Compilar con GitHub Actions usando `.github/workflows/build-apk.yml` del paquete
 - Favoritos más simples: pulsa la estrella visible de cada ficha con mouse/touch; con control remoto usa MENU, botón amarillo (si existe) o mantener OK.
 - Fuente chilena M3U.CL disponible explícitamente como `M3U.CL Chile · CL.m3u`: `https://m3u.cl/lista/CL.m3u`.
 - Versión: `1.6.1-mx10-search-favorites` (10).
+
+
+## V5.6 - Nacionales + Alplox
+
+- Nuevo apartado principal `Nacionales`, separado de `Chile`.
+- Fuente principal: `Alplox/json-teles` playlist Chile, filtrada a señales nacionales.
+- Fuentes alternativas en Nacionales: M3U.CL, IPTV-org y Free-TV.
+- Se incluyen TVN/TVN 3, 24 Horas, Mega/Meganoticias, Chilevisión/CHV Noticias, Canal 13/T13 y otras señales nacionales cuando estén presentes en la fuente activa.
+- Para Chilevisión se prioriza la URL estable publicada por Alplox/Free-TV mediante `redirector.rudo.video`. La URL directa `jireh-22...` entregada por el usuario contiene parámetros de sesión (`dpssid`, `sid`, `ndvc`) y no se fija de forma permanente para evitar que caduque.
+- Versión: `1.6.2-mx10-nacionales-alplox` (11).

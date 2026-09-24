@@ -1,24 +1,21 @@
-# TV Hispana MX10 v5.5
+# TV Hispana MX10 v5.6 - Nacionales + Alplox
 
-Sube el contenido de esta carpeta contenedora a la raíz de tu repositorio manteniendo esta estructura:
+Sube el contenido de esta carpeta a la raíz de tu repositorio GitHub, conservando:
 
-```text
-.github/workflows/build-apk.yml
-ChileTV_IPTV_Android_TV13_repo/ChileTV_IPTV_Android/
-```
+- `.github/workflows/build-apk.yml`
+- `ChileTV_IPTV_Android_TV13_repo/ChileTV_IPTV_Android/`
 
-## Cambios v5.5
+## Cambios v5.6
 
-- El buscador mantiene el teclado abierto después de escribir la primera letra.
-- El filtrado usa un pequeño debounce para disminuir trabajo en el MX10.
-- Pulsa Buscar/Enter para cerrar el teclado y volver a la grilla.
-- Favoritos más fáciles: pulsa directamente la estrella visible de cada canal.
-- Con control remoto también puedes marcar/quitar favorito con MENU, botón amarillo, BOOKMARK o `*` si están disponibles.
-- Se mantiene mantener-OK como alternativa.
-- Fuente chilena M3U.CL incorporada de forma explícita: `https://m3u.cl/lista/CL.m3u`.
-- Versión de la app: `1.6.1-mx10-search-favorites` (`versionCode 10`).
+- Nuevo apartado principal **Nacionales**.
+- Fuente principal del apartado: **Alplox/json-teles (Chile)**.
+- Fuentes alternativas: M3U.CL, IPTV-org y Free-TV.
+- El filtro Nacionales prioriza TVN/TVN 3, 24 Horas, Mega/Meganoticias, Chilevisión/CHV Noticias, Canal 13/T13, La Red, TV+, UCV TV, CNN Chile y Telecanal cuando estén presentes en la fuente activa.
+- Para Chilevisión se usa la ruta estable publicada en Alplox/Free-TV (`redirector.rudo.video`). La URL directa con `dpssid`, `sid` y `ndvc` no se fija porque esos parámetros parecen de sesión y pueden caducar.
+- Se mantienen la búsqueda corregida, favoritos simplificados y el manejo de memoria de v5.5.
 
-## Compilación
+## Resultado de GitHub Actions
 
-Al hacer Commit en `main`, GitHub Actions ejecutará `Compilar TV Hispana MX10 v5.5 Search Favorites`.
-Descarga el artefacto `TV-Hispana-MX10-v5-5-Search-Favorites` y dentro encontrarás `app-debug.apk`.
+Artifact esperado: `TV-Hispana-MX10-v5-6-Nacionales-Alplox`
+
+Versión: `1.6.2-mx10-nacionales-alplox` (11)

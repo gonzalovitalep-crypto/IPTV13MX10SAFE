@@ -10,8 +10,8 @@ android {
         applicationId 'cl.chiletv.app.safe'
         minSdk 21
         targetSdk 25
-        versionCode 10
-        versionName '1.6.1-mx10-search-favorites'
+        versionCode 11
+        versionName '1.6.2-mx10-nacionales-alplox'
     }
 
     buildTypes {

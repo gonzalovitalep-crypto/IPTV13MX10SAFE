@@ -21,7 +21,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="TV Hispana · MX10 Memory Safe 5.5"
+                android:text="TV Hispana · MX10 Memory Safe 5.6"
                 android:textColor="@color/textPrimary"
                 android:textSize="25sp"
                 android:textStyle="bold" />
@@ -29,7 +29,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Chile · Latinoamérica · España/Europa · EE.UU. hispano"
+                android:text="Nacionales · Chile · Latinoamérica · España/Europa · EE.UU. hispano"
                 android:textColor="@color/textSecondary"
                 android:textSize="12sp" />
         </LinearLayout>
